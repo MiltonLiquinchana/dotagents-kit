@@ -318,7 +318,7 @@ Con `herramientas.agent_browser: true`, añade una verificación en el navegador
 
 1. Usa la instancia de desarrollo, con el Test mode activo (lo está por defecto) y el código por correo.
 2. Si la instancia solo admite invitados, crea `kit-agente+clerk_test@example.com` en el panel de la instancia de desarrollo (Users → Create user).
-3. Añádelo a la organización con el rol que necesiten las pantallas.
+3. Añádelo a la organización con un rol que tenga los permisos que usan las pantallas. Clerk los comprueba aunque la app no maneje roles: si la app invita o gestiona miembros en nombre del usuario con sesión, usa `org:admin`.
 4. Si la app exige un perfil local activo para el usuario, créalo en la base de desarrollo.
 
 - Las invitaciones a direcciones `+clerk_test` se prueban: Clerk no envía correos a direcciones de prueba.
