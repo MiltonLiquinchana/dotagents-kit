@@ -42,11 +42,11 @@ REQUIRED = {
     "nextjs": COMMON + [
         "herramientas.agent_browser",
         "frontend.framework", "frontend.version", "frontend.gestor_paquetes", "frontend.eslint_config",
-        "sonarqube.url", "sonarqube.project_key", "integraciones.autenticacion", "mcp.sonarqube",
+        "sonarqube.project_key", "integraciones.autenticacion",
     ],
     "springboot": COMMON + [
         "backend.java", "backend.spring_boot", "backend.build", "backend.gateway",
-        "sonarqube.url", "backend.jdk_ruta_desarrollo", "integraciones.autenticacion", "mcp.sonarqube",
+        "backend.jdk_ruta_desarrollo", "integraciones.autenticacion",
     ],
     "mysql": COMMON + [
         "base_de_datos.motor", "base_de_datos.version", "base_de_datos.nombre",
@@ -75,7 +75,7 @@ for _name in ("prohibidos-proyecto.txt", "prohibidos-proceso.txt"):
             FORBIDDEN.append(_pattern)
 DYNAMIC_FORBIDDEN_KEYS = (
     "backend.jdk_ruta_desarrollo", "devops.registry", "devops.java_home_nodo", "devops.java_home_contenedor",
-    "devops.jdk_url", "devops.slack_canal", "sonarqube.url",
+    "devops.jdk_url", "devops.slack_canal",
     "integraciones.clerk_issuer_uri", "backend.cors_origenes",
     "devops.entornos.{nombre}.cors_origenes", "devops.entornos.{nombre}.clerk_issuer_uri",
 )
@@ -427,7 +427,15 @@ def check_project(project_dir):
         except UnicodeDecodeError:
             continue
         for i, line in enumerate(text.splitlines(), 1):
-            m = pat.search(line)
+            # El runtime fijo de SonarQube MCP es independiente del JDK del proyecto.
+            # Solo se exceptúan sus dos mensajes; el resto de la línea sigue validándose.
+            scanned = line
+            if expected in ("springboot", "nextjs"):
+                if rel == ".agents/scripts/sonar-servidor.mjs":
+                    scanned = scanned.replace("SonarQube MCP necesita Java 21 o superior", "SonarQube MCP necesita Java ≥ 21")
+                elif rel == ".agents/config/codigos.yaml" and line.startswith("  SONAR_MCP:"):
+                    scanned = scanned.replace("si falta Java 21 o superior, instálalo", "si falta Java ≥ 21, instálalo")
+            m = pat.search(scanned)
             if m:
                 errs.append(f"D: {rel} L{i} [{m.group(0)}] {line.strip()[:120]}")
     return errs

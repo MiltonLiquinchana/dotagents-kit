@@ -15,11 +15,7 @@ frontend:
   notificaciones: react-toastify   # react-toastify | ninguna: librería para avisos en pantalla; valores válidos en .agents/config/opciones.yaml
 
 sonarqube:
-  url: http://localhost:9000    # servidor SonarQube; la variable SONARQUBE_URL tiene prioridad
   project_key: mi-proyecto-front   # sonar.projectKey del proyecto en el servidor
-
-mcp:
-  sonarqube: sonarqube            # nombre con el que el servidor MCP de SonarQube está registrado en tus herramientas
 
 integraciones:
   gestion_usuarios: ninguna     # ninguna | organizaciones | aplicacion: gestión de perfiles con Clerk; recomendado ninguna

@@ -14,7 +14,7 @@ Ejecutar los siguientes puntos en orden. Si cualquiera falla, aplica el código,
    - El árbol limpio aplica al inicio de la feature. En cambios multi-servicio, los commits intermedios del propio flujo no vuelven a pasar por este script.
    - Si falta el índice de CBM o no está listo, propone `.agents/workflows/codebase-memory.md`; el usuario decide o se incluye la reparación en un plan aprobado. No indexes solo para que pase el preflight.
    - Un `AVISO [CODIGO]` no bloquea ni autoriza reparar algo fuera del plan.
-2. **Servidor de SonarQube (`<mcp.sonarqube>`) operativo**: `node .agents/scripts/sonar-mcp.mjs search_my_sonarqube_projects` responde con `estado: ok`.
+2. **Servidor MCP de SonarQube propio del kit operativo**: `node .agents/scripts/sonar-mcp.mjs search_my_sonarqube_projects` responde con `estado: ok`.
 3. **Canario SonarQube**: `node .agents/scripts/sonar-diff-gate.mjs --canary` (exit 2 = `BLOCKED (infraestructura)`). Equivale a `analyze_code_snippet` con `fileContent` = contenido de `.agents/skills/code-reviewer/fixtures/CanarySqli.java`, `language: "java"`, `scope: "MAIN"` y sin `projectKey`. Pasa solo si aparece `java:S2077`.
 4. **Inicialización de RUN_DIR**:
    - Crear carpeta de ejecución: `RUN_DIR=".agent-runs/$(date +%Y%m%d-%H%M)-<slug-feature>"`

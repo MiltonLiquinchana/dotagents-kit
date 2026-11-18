@@ -6,10 +6,10 @@ import shutil
 import subprocess
 
 TOOLS = ['node']
-KEYS = ['sonarqube.url', 'frontend.eslint_config', 'frontend.gestor_paquetes', 'herramientas.agent_browser']
+KEYS = ['frontend.eslint_config', 'frontend.gestor_paquetes', 'herramientas.agent_browser']
 SOURCES_PREFIX = 'nextjs-'
 CONTEXT_CODE = 'STACK_INVALIDO'
-EXPENSIVE = ['LINTER', 'SONARQUBE']
+EXPENSIVE = ['LINTER', 'SONARQUBE', 'SONAR_MCP']
 PENDIENTE = 'Pendiente (lo hace el agente, no este script): proyecto en SonarQube + MCP responde + canario S1523.'
 WORKFLOWS = ['implement-feature', 'bootstrap-project', 'change-version', 'preparar-documentacion']
 # si integraciones.autenticacion=clerk
@@ -89,10 +89,14 @@ def caros(p, ctx, params):
     sonar(p, params)
 
 def sonar(p, params):
-    url = os.environ.get('SONARQUBE_URL', params['sonarqube.url'])
+    rc, detalle = p.output(['node', p.agents / 'scripts/sonar-servidor.mjs', '--comprobar'])
+    if rc:
+        p.add('SONAR_MCP', detalle or 'No se pudo comprobar el servidor MCP del kit.')
+        return
+    url = os.environ['SONARQUBE_URL']
     rc, out, _ = p.run(['curl', '-s', '-m', '5', url + '/api/system/status'])
     if rc or not out:
-        p.add('SONARQUBE', f'SonarQube no responde en {url} (curl exit {rc}). Revisa la red o SONARQUBE_URL.')
+        p.add('SONARQUBE', f'SonarQube no responde (curl exit {rc}). Revisa la red o SONARQUBE_URL.')
         return
     try:
         response = json.loads(out)
@@ -100,7 +104,7 @@ def sonar(p, params):
     except (ValueError, AttributeError, TypeError):
         state = None
     if not state:
-        p.add('SONARQUBE', f'{url} responde, pero no es la respuesta de /api/system/status de SonarQube.\nRespuesta (primeros 200 caracteres): ' + out[:200])
+        p.add('SONARQUBE', 'SONARQUBE_URL responde, pero no es la respuesta de /api/system/status de SonarQube.')
     elif state != 'UP':
         p.add('SONARQUBE', f"SonarQube responde pero su estado es '{state}', no 'UP'. Espera a que termine de arrancar.")
     else:

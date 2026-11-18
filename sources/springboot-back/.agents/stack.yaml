@@ -19,12 +19,6 @@ backend:
   jdk_ruta_desarrollo: /usr/lib/jvm/jdk-26.0.1  # Una sola ruta POSIX absoluta del JDK de desarrollo, sin comas, o null para no gestionar org.gradle.java.installations.paths.
   perfil_local: feature         # perfil local activo en application.yaml; distinto de los sufijos de devops.entornos
 
-sonarqube:
-  url: http://localhost:9000    # servidor SonarQube; la variable SONARQUBE_URL tiene prioridad
-
-mcp:
-  sonarqube: sonarqube            # nombre con el que el servidor MCP de SonarQube está registrado en tus herramientas
-
 integraciones:
   gestion_usuarios: ninguna     # ninguna | organizaciones | aplicacion: gestión de perfiles con Clerk; recomendado ninguna
   autenticacion: clerk          # ninguna | clerk

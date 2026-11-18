@@ -118,7 +118,7 @@ Instala lo necesario para tu stack antes de lanzar sus workflows. Las opciones s
 | IA con ejecución de comandos y escritura de archivos | Seguir las instrucciones y guardar cambios aprobados | Obligatoria; permite acceso local y las rutas indicadas abajo | Todos |
 | Node.js | Ejecutar los scripts `.mjs` | Obligatorio | Back y front |
 | `curl` | Comprobar SonarQube | Obligatorio | Back y front |
-| SonarQube y [servidor MCP de SonarQube](https://github.com/SonarSource/sonarqube-mcp-server) | Análisis, comprobaciones con defectos conocidos y gate diferencial | Obligatorios; runtime de Java en la versión requerida por el README del servidor; configura el nombre de `mcp.sonarqube` o las variables de entorno de [Conexión, permisos y SonarQube](#conexión-permisos-y-sonarqube) | Back y front |
+| SonarQube y Java ≥ 21 | Análisis, comprobaciones con defectos conocidos y gate diferencial | Obligatorios; el servidor MCP lo descarga el kit en `~/.dotagentskit` con tu permiso. Consulta [Conexión, permisos y SonarQube](#conexión-permisos-y-sonarqube) | Back y front |
 | JDK y wrapper Gradle ejecutable | Compilar y comprobar toolchains | Obligatorios; JDK de la versión `backend.java` que Gradle detecta (`./gradlew javaToolchains`) | Back |
 | npm/`npx`, pnpm o Yarn y ESLint local | Dependencias y linter | El gestor de `frontend.gestor_paquetes`; con npm se comprueba `npx`; Yarn admite PnP | Front |
 | [agent-browser](https://github.com/vercel-labs/agent-browser) | Verificación en el navegador; instala con `npm install -g agent-browser` y después `agent-browser install` | Con `herramientas.agent_browser: true` | Front |
@@ -156,7 +156,7 @@ Contesta una decisión por pregunta. La guía propone lo detectado con archivo y
 dato presenta el valor de plantilla. Tú eliges las versiones y opciones permitidas de las fichas.
 En SQL, la guía te pregunta cómo se llama el notebook con datos de prueba y no lo abre: lo excluye por
 nombre antes de leer SQL. Propone `conexiones: {}` sin acceso a una base de datos real.
-Solo pide nombres de variables y servidores MCP, nunca valores ni la configuración de tus herramientas.
+Solo pide nombres de variables y, para los MCP que lo requieran (como el de MySQL), nombres de servidores; nunca valores ni la configuración de tus herramientas. SonarQube usa el servidor propio del kit.
 Open Notebook es obligatorio; los modelos opcionales en `null` usan sus predeterminados.
 
 Revisa el `stack.yaml` propuesto. Con tu confirmación la IA escribe `.agents/stack.yaml` y
@@ -615,24 +615,17 @@ Algunas herramientas dejan `.agents` y `.git` en solo lectura aunque el resto de
 ejemplo, codex en modo `workspace-write`. Ahí `documentacion.py` responde `REGISTRO_SOLO_LECTURA` antes de tocar
 Open Notebook («No se puede escribir en .agents… No se ha cambiado nada»); la IA se detiene y te pide el permiso.
 
-**SonarQube sin cargar su MCP (front y back).** La IA llama a SonarQube con `.agents/scripts/sonar-mcp.mjs`, que
-arranca el servidor MCP por su cuenta y solo deja usar las herramientas que el `.agents` necesita
-(`config/sonar-mcp.json`); las de escritura (cambiar el estado de un issue o de un hotspot) exigen tu aprobación
-explícita. Así puedes **desactivar** el MCP de SonarQube en tu herramienta y ahorrar contexto en cada sesión:
-- desactívalo sin borrar su entrada, porque el script (como el gate) lee de ahí cómo arrancar el servidor. Por
-  ejemplo, en opencode `"enabled": false` dentro de su entrada de `~/.config/opencode/opencode.json`;
-  en codex, `enabled = false` en su tabla de `~/.codex/config.toml`. En otras herramientas, usa su opción de
-  desactivar si conserva la entrada;
-- si borras la entrada, la comentas o la tienes en un `.jsonc` con comentarios, el script responde
-  `SONAR_SERVIDOR` («no se encontró el servidor MCP…»). Alternativa: las variables `SONARQUBE_MCP_JAR`,
-  `SONARQUBE_URL` y `SONARQUBE_TOKEN`, o un JSON propio con la entrada apuntado por `SONARQUBE_MCP_CONFIG`;
-- no tengas a la vez el MCP activo y el script usando la misma carpeta de almacenamiento del servidor MCP
-  de SonarQube (la indicada por `SONARQUBE_STORAGE_PATH`, si se configura). El error `90028` indica
-  que esa carpeta está bloqueada por otro proceso; si ves ese error o `MVStoreException`, cierra la
-  herramienta que usa el MCP;
-- en herramientas con aislamiento (codex `workspace-write`), el script necesita red, como el gate;
-- no añadas a la lista de órdenes permitidas `sonar-mcp.mjs … --confirmar`: ese `--confirmar` lo escribe la IA, y
-  cada escritura tiene que pasar por tu aprobación.
+**SonarQube sin cargar su MCP (front y back).** El kit usa su propio servidor MCP; no hace falta registrarlo en ningún agente y puedes borrar la entrada que tuvieras. La IA llama a `.agents/scripts/sonar-mcp.mjs`, con la lista blanca `config/sonar-mcp.json`. Las herramientas de escritura exigen tu aprobación explícita y `--confirmar`.
+
+- Instala Java ≥ 21 en el PATH, también en el front; en el back este runtime es independiente del JDK de Gradle.
+- La IA debe pedirte permiso antes de ejecutar `node .agents/scripts/instalar-sonar-mcp.mjs`: descarga una versión fijada del servidor oficial en `~/.dotagentskit`, verifica su SHA-256 y no la vuelve a descargar si ya es válida. `--comprobar` comprueba la instalación sin red. El preflight no instala nada.
+- Exporta `SONARQUBE_URL` y `SONARQUBE_TOKEN` (token de usuario de SonarQube) en el entorno de tu herramienta. Ambas son obligatorias; no envíes el token a la IA ni lo guardes en `stack.yaml`. La URL tampoco se configura en ese archivo.
+- `SONARQUBE_MCP_JAR` es opcional: permite usar un jar propio existente y legible, cuya versión y origen son tu responsabilidad; no se le exige la huella fijada por el kit.
+- `SONARQUBE_STORAGE_PATH` es opcional: debe indicar una carpeta absoluta existente y escribible. Sin ella, cada ejecución tiene almacenamiento exclusivo que se limpia cuando termina su proceso. Si defines una carpeta compartida, evita usarla a la vez desde otro proceso; `90028` o `MVStoreException` pueden indicar que está bloqueada.
+- `DOTAGENTSKIT_HOME` permite elegir otra base absoluta de instalación y almacenamiento; definida vacía o relativa bloquea la ejecución.
+- El servidor tiene licencia **SONAR Source-Available License v1.0**. El kit no redistribuye el jar: cada usuario lo descarga desde el sitio oficial de SonarSource.
+- En herramientas con aislamiento, el instalador necesita red al sitio oficial y permiso para escribir en la base elegida; los clientes necesitan acceso a SonarQube.
+- No añadas a las órdenes permitidas `sonar-mcp.mjs … --confirmar`: cada escritura requiere tu aprobación.
 
 El plazo de conexión con Open Notebook es fijo: **5 segundos**; `documentacion.timeout_chat` no lo cambia. Una conexión
 rechazada o bloqueada puede fallar al instante aunque el mensaje hable del plazo; subirlo no abre la
@@ -817,7 +810,7 @@ al repositorio puede cambiar la clave efectiva y este cálculo no la ve.
 
 Si la clave no se puede determinar, se informa el motivo y el análisis local sigue **sin projectKey**.
 Ese mensaje es distinto de «proyecto ausente»; no crees un proyecto adivinando la clave.
-Para la dirección del servidor, `SONARQUBE_URL` tiene prioridad sobre `sonarqube.url`.
+La dirección del servidor se configura solo con `SONARQUBE_URL`, obligatoria igual que `SONARQUBE_TOKEN`.
 
 La revisión solo cuenta si ejecutó el gate: deja un recibo con los archivos analizados y el workflow lo
 comprueba con `sonar-diff-gate.mjs --comprobar-recibo`. Si el gate no puede ejecutarse, la revisión queda

@@ -32,8 +32,8 @@ const REQUIRED = [
   'proyecto.nombre', 'proyecto.stack',
   'backend.group', 'backend.java', 'backend.spring_boot', 'backend.build', 'backend.gateway',
   'backend.persistencia', 'backend.lombok', 'backend.prueba_viva',
-  'sonarqube.url', 'backend.jdk_ruta_desarrollo',
-  'integraciones.autenticacion', 'mcp.sonarqube',
+  'backend.jdk_ruta_desarrollo',
+  'integraciones.autenticacion',
   'herramientas.codebase_memory', 'git.rama_base',
 
 ];
@@ -684,7 +684,7 @@ function main(argv) {
   if (argv.length === 0 || argv[0] === '--help' || argv[0] === '-h') {
     process.stdout.write(
       `Uso: node .agents/scripts/stack.mjs get <clave> | validate | huella | regenerar | registro-datos | --help\n` +
-      `  get <clave>   imprime el valor de la clave punteada (p. ej. sonarqube.url);\n` +
+      `  get <clave>   imprime el valor de la clave punteada (p. ej. proyecto.nombre);\n` +
       `                salida: booleanos true/false; null línea vacía; números sin decimales añadidos;\n` +
       `                textos tal cual; listas, un elemento por línea\n` +
       `  validate      comprueba que .agents/stack.yaml existe, respeta el subconjunto\n` +

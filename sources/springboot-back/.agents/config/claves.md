@@ -39,7 +39,7 @@
 - **Token:** dato que acredita la sesión de una persona al llamar a la API; se configura y maneja sin mostrar su contenido.
 - **JWT:** tipo de token cuya identidad y emisor puede comprobar el back antes de aceptar una petición.
 - **Clerk:** servicio de identidad que permite iniciar sesión y comprobar quién hace una petición.
-- **SonarQube:** servidor que analiza el código y comunica problemas de calidad.
+- **SonarQube:** servidor que analiza el código y comunica problemas de calidad. La conexión usa solo `SONARQUBE_URL` y `SONARQUBE_TOKEN`, obligatorias en el entorno de la herramienta. El kit instala su servidor MCP con `node .agents/scripts/instalar-sonar-mcp.mjs`, previa autorización del usuario para descargarlo en `~/.dotagentskit`; necesita Java ≥ 21 del PATH. `SONARQUBE_MCP_JAR` permite un jar propio y `SONARQUBE_STORAGE_PATH` una carpeta compartida opcional; sin ella cada ejecución tiene almacenamiento exclusivo que se limpia al terminar. No se consulta la configuración de ningún agente.
 - **Base:** nombre de `rootProject.name` sin un `-service` final; identifica archivos y recursos también del gateway. El context-path solo forma URL.
 - **`{AliasPascal}`:** hueco sustituido por la base con sus palabras empezando en mayúscula; por ejemplo `pedidos` da `Pedidos`.
 - **Manifiesto:** archivo que describe un recurso que Kubernetes debe mantener, como las copias de un servicio.
@@ -291,44 +291,6 @@ Antes de crear la carpeta solo se declara `backend.gateway`; acuerda también CO
 **Si eliges `feature`:** Por ejemplo, la ejecución local de pedidos usa `application-feature.yaml`. Conviene si empiezas sin perfil local: la plantilla usa `feature` y nombres con `FEATURE`.
 
 **Respaldo:** `scripts/stack.mjs`; `scripts/servicios.py`; `scripts/preflight_stack.py`; `skills/service-creator/SKILL.md`.
-
-## sonarqube.url
-
-**En resumen:** Indica la dirección de SonarQube donde la comprobación previa verifica si el análisis está disponible.
-
-**Dónde se ve en tu proyecto:** En `stack.yaml`, por ejemplo `url: https://calidad.example.invalid`. Es la dirección de tu servidor de análisis, no la de la aplicación ni una credencial.
-
-**Para qué se usa:**
-- La comprobación previa consulta si ese servidor está listo para analizar.
-- La clave de proyecto se calcula por servicio; consulta «Clave de proyecto de SonarQube» en el glosario.
-- La variable de entorno `SONARQUBE_URL`, si existe, tiene prioridad para esta comprobación; la conexión MCP del análisis se configura por separado.
-
-**Qué pasa si está mal:** Una dirección incorrecta o un servidor que no esté listo puede impedir continuar según la tarea. La dirección no debe llevar usuario, contraseña ni token.
-
-**Cambiarla después:** Edita `stack.yaml`, sin regenerar. Si defines `SONARQUBE_URL`, cambiar solo esta clave no cambia la dirección consultada.
-
-**Si conservas el dato confirmado (por ejemplo, `https://calidad.example.invalid`):** Por ejemplo, la comprobación previa consulta esa instalación antes de revisar pedidos. Recomendado: usa la dirección confirmada por quien mantiene tu SonarQube, porque una dirección de ejemplo no demuestra dónde está tu servidor.
-
-**Respaldo:** `scripts/preflight_stack.py`; `scripts/stack.mjs`.
-
-## mcp.sonarqube
-
-**En resumen:** Nombra la entrada del servidor que `sonar-mcp.mjs` y el gate buscan para conectar con SonarQube.
-
-**Dónde se ve en tu proyecto:** En `stack.yaml`, por ejemplo `sonarqube: analisis`. MCP permite que el agente use herramientas externas; `analisis` es el nombre público con el que registraste ese servidor, no una URL ni un token.
-
-**Para qué se usa:**
-- Con las tres variables `SONARQUBE_MCP_JAR`, `SONARQUBE_URL` y `SONARQUBE_TOKEN`, el análisis usa esa conexión antes que la registrada en la herramienta.
-- Si no están las tres, `SONARQUBE_MCP_CONFIG` permite buscar primero en un archivo indicado por ti; ahí se selecciona la entrada con el nombre de esta clave. Después se busca en la configuración habitual de la herramienta.
-- Puedes desactivar ese MCP en tu herramienta mientras su entrada siga legible para el resolvedor, o usar las tres variables anteriores. Conviene desactivarlo para no compartir almacenamiento entre dos servidores a la vez. Borrar o comentar la entrada, usar `.jsonc` con comentarios o una configuración que el resolvedor no lea puede impedir encontrarla. No compartas ni leas sus valores privados.
-
-**Qué pasa si está mal:** Si ninguna de esas vías proporciona una conexión válida, el análisis se detiene. Con un archivo indicado por `SONARQUBE_MCP_CONFIG`, un nombre incorrecto no encuentra su entrada.
-
-**Cambiarla después:** Edita `stack.yaml` con el nombre que tú confirmes; se lee al analizar, sin regenerar. Configura la conexión fuera del proyecto sin compartir sus archivos privados.
-
-**Si conservas el dato confirmado (por ejemplo, `analisis`):** Por ejemplo, el análisis de pedidos busca el servidor que registraste como `analisis`. Recomendado: exactamente tu nombre registrado; no copies el de otra instalación aunque use también SonarQube.
-
-**Respaldo:** `scripts/sonar-mcp.mjs`; `scripts/sonar-diff-gate.mjs`; `skills/code-reviewer/references/sonarqube-gate.md`; `scripts/stack.mjs`.
 
 ## integraciones.gestion_usuarios
 

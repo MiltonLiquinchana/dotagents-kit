@@ -1,6 +1,6 @@
 # Referencia: cliente de SonarQube
 
-Consulta el esquema vigente con `node .agents/scripts/sonar-mcp.mjs listar`: pagina `tools/list` y muestra solo las herramientas permitidas por este stack. Los esquemas proceden del servidor, no de esta referencia. La configuración se resuelve internamente; no leas configuraciones privadas ni credenciales.
+Consulta el esquema vigente con `node .agents/scripts/sonar-mcp.mjs listar`: pagina `tools/list` y muestra solo las herramientas permitidas por este stack. Los esquemas proceden del servidor, no de esta referencia. La conexión usa solo `SONARQUBE_URL` y `SONARQUBE_TOKEN`, obligatorias en el entorno de la herramienta. El kit instala su servidor MCP con `node .agents/scripts/instalar-sonar-mcp.mjs`, previa autorización del usuario para descargarlo en `~/.dotagentskit`; necesita Java ≥ 21 del PATH. `SONARQUBE_MCP_JAR` permite un jar propio y `SONARQUBE_STORAGE_PATH` una carpeta compartida opcional; sin ella cada ejecución tiene almacenamiento exclusivo que se limpia al terminar. No se consulta la configuración de ningún agente. No leas credenciales ni sus valores.
 
 La interfaz es `node .agents/scripts/sonar-mcp.mjs <herramienta> --json '<objeto JSON>'`. Las llamadas usan el cliente propio; no uses el MCP conectado directamente. Salida: una línea JSON, código 0 éxito, 1 error de herramienta sin reintento, 2 bloqueo/infraestructura. Los códigos SONAR_* son del cliente, no del preflight. Si la salida está truncada, usa pageIndex/pageSize cuando el esquema los admita.
 
@@ -23,7 +23,7 @@ La interfaz es `node .agents/scripts/sonar-mcp.mjs <herramienta> --json '<objeto
 
 ## Disponibilidad y almacenamiento
 
-El preflight consulta GET /api/system/status y el canario comprueba análisis; una consulta de proyectos usa el cliente anterior. Si aparece 90028 o MVStoreException, evita ejecutar a la vez el MCP activo de la herramienta y el script cuando comparten STORAGE_PATH. Puedes desactivar el MCP conservando su entrada legible o usar las variables de conexión; no leas sus valores.
+El preflight consulta GET /api/system/status y el canario comprueba análisis; una consulta de proyectos usa el cliente anterior. Si defines `SONARQUBE_STORAGE_PATH` compartida y aparece 90028 o MVStoreException, evita usar esa carpeta a la vez desde varios procesos. Sin esa variable se usa almacenamiento exclusivo por ejecución. No necesitas conservar una entrada MCP en tu agente; no leas configuraciones privadas ni valores de credenciales.
 
 ## Herramientas excluidas
 

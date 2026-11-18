@@ -18,7 +18,7 @@ proyecto). Los marcadores `<clave>` que aparezcan en skills, reglas o workflows 
 - **Autenticación**: Si `integraciones.autenticacion` de `.agents/stack.yaml` no es `ninguna`, consulta la sección de autenticación de `.agents/rules/project.md` antes de tocar ese código y apóyate en las skills externas declaradas ahí; si `herramientas.codebase_memory` de `.agents/stack.yaml` es `true`, actualiza el grafo con `python3 -I -B .agents/scripts/codebase-memory.py --indexar`.
 
 ## Herramientas de consulta
-- Las herramientas de SonarQube se llaman con `.agents/scripts/sonar-mcp.mjs`, no con el MCP directamente.
+- Las herramientas de SonarQube se llaman con `.agents/scripts/sonar-mcp.mjs`, no con el MCP directamente. El servidor MCP es propio del kit; URL y token solo por `SONARQUBE_URL` y `SONARQUBE_TOKEN`.
 - **Codebase Memory**: Si `herramientas.codebase_memory` de `.agents/stack.yaml` es `true`, consulta el grafo (`search_graph`, `trace_path`, `get_code_snippet` y `get_file_outline`, con el proyecto resuelto por `python3 -I -B .agents/scripts/codebase-memory.py --resolver`) para comprender relaciones y arquitectura de código. Detalle en `.agents/rules/codebase-memory.md`.
 - **tgrep**: Consulta notas de contexto e historial vinculante de correcciones previas en `knowledge-base/`. Detalle en `.agents/rules/tgrep.md`.
 

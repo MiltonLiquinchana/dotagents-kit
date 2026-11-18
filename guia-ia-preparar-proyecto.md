@@ -339,8 +339,8 @@ Si hay varios locks, pregunta cuál vale; el agente podrá quitar el sobrante en
     respuesta parece un valor (empieza por `sk_`, `pk_` o `whsec_`, contiene `=` o es larga y aleatoria),
     no la escribas y pide el nombre. En el back, con `gestion_usuarios: organizaciones`, ofrece añadir
     `CLERK_DEFAULT_INVITER_USER_ID` (opcional: el invitador por defecto) a la lista de la plantilla.
-12. **Nombres de MCP** (`mcp.*`): son los nombres con los que el usuario registró los servidores en sus
-    herramientas. **Pregúntaselos**; no leas su configuración para averiguarlos.
+12. **SonarQube (back y front):** informa que necesita Java ≥ 21 del PATH y pide permiso para ejecutar `node .agents/scripts/instalar-sonar-mcp.mjs` después de generar: descarga el servidor oficial con huella fijada en `~/.dotagentskit` (licencia SONAR Source-Available License v1.0). Comprueba solo que estén definidas `SONARQUBE_URL` y `SONARQUBE_TOKEN`, sin mostrar ni leer sus valores. Si faltan, pide al usuario exportarlas en el entorno de su herramienta. No preguntes el nombre de un MCP de SonarQube ni su URL para `stack.yaml`; el kit no depende de entradas del agente. Si no autoriza instalar, informa el bloqueo y no lo ejecutes. Un `SONARQUBE_MCP_JAR` propio existente y legible permite usar su instalación.
+    **Otros nombres de MCP** (`mcp.*`, como el de MySQL): son los nombres registrados por el usuario; pregúntaselos sin leer la configuración de sus herramientas.
 13. **`conexiones` (stack `mysql`):** decide si los agentes pueden ejecutar en una base real. Propón `{}`
     (ninguna) y explica que, si añade una conexión, los pasos que ejecutan en la base podrán usarla. Solo
     pon una conexión si el usuario lo pide expresamente.

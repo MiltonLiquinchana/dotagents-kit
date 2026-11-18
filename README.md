@@ -20,7 +20,7 @@ opencode o codex. Claude Code carga `CLAUDE.md`: crea en tu proyecto ese archivo
 
 Requisitos: Git, Python 3, `jq`, `tgrep`, Open Notebook con un proveedor de modelos y una IA que pueda
 ejecutar comandos y escribir archivos; según el stack, Node.js, `curl`, SonarQube y su servidor MCP
-(back y front), JDK (back) y Java para el servidor MCP de SonarQube (back y front), PyYAML y
+(back y front; el kit lo descarga en `~/.dotagentskit` con tu permiso), JDK (back) y Java ≥ 21 para ese MCP (back y front), PyYAML y
 Docker/Podman (SQL), y `db-mcp-server` para los pasos con la base real (SQL).
 Con `herramientas.codebase_memory: true` necesitas también la CLI [Codebase Memory](https://github.com/DeusData/codebase-memory-mcp); el índice es local y se crea una vez por cada copia del repositorio (clon o worktree).
 Para el front, [agent-browser](https://github.com/vercel-labs/agent-browser) es opcional: se necesita con `herramientas.agent_browser: true`.

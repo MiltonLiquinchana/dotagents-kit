@@ -18,26 +18,18 @@
 //
 // Códigos de salida: 0 = PASA, 1 = BLOQUEA (hay issues nuevos), 2 = BLOCKED (infraestructura).
 //
-// Configuración del servidor MCP (nunca se escribe en el repositorio ni se imprime):
-//   1. Variables de entorno SONARQUBE_MCP_JAR + SONARQUBE_URL + SONARQUBE_TOKEN
-//      (opcional SONARQUBE_STORAGE_PATH). Si el jar necesita otro lanzador, usa 2 o 3.
-//   2. SONARQUBE_MCP_CONFIG = ruta a un JSON con la entrada mcpServers.<mcp.sonarqube>.
-//   3. Archivos de las herramientas, buscando el servidor <mcp.sonarqube>:
-//      ~/.claude.json (mcpServers.<nombre>, o projects.<repo>.mcpServers.<nombre>),
-//      ~/.gemini/config/mcp_config.json, ~/.gemini/antigravity/mcp_config.json,
-//      ~/.config/opencode/opencode.json (command como lista + environment),
-//      ~/.config/Code/User/mcp.json (servers.<nombre>) y ~/.codex/config.toml
-//      ([mcp_servers.<nombre>] con command, args y la tabla .env).
-//   --resolver-config imprime solo de qué archivo y con qué nombre resolvió, sin valores.
-//   Este script lee esos ficheros él mismo y pasa el entorno al subproceso; el agente no ve
-//   su contenido.
-//   Cualquier aparición del token en un mensaje de error se sustituye por ***.
+// Servidor propio del kit: Java del PATH y jar instalado por instalar-sonar-mcp.mjs.
+// URL y token solo por SONARQUBE_URL y SONARQUBE_TOKEN. Jar y storage opcionales
+// por SONARQUBE_MCP_JAR y SONARQUBE_STORAGE_PATH; por defecto storage exclusivo.
+// --resolver-config imprime únicamente nombres de orígenes y versión mayor de Java.
+// Cualquier aparición del token en un mensaje de error se sustituye por ***.
 // ==============================================================================
 import { spawn, spawnSync, execFileSync } from 'node:child_process';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
-import os from 'node:os';
+import { resolverServidor, cerrarServidor } from './sonar-servidor.mjs';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { get as stackGet } from './stack.mjs';
 
 // ---- Configuración propia de este repositorio (única parte que difiere del backend) ----
@@ -79,169 +71,15 @@ function infra(msg) {
   limpiarYSalir(2);
 }
 
-let hijo = null;
-function limpiarYSalir(code) {
-  try { hijo?.kill(); } catch { /* ya terminó */ }
-  process.exit(code);
+let hijo = null, configuracion = null;
+class Salida extends Error { constructor(code) { super('Fin del gate'); this.code = code; } }
+function limpiarYSalir(code) { throw new Salida(code); }
+async function cerrar() {
+  await cerrarServidor(hijo);
+  configuracion?.liberar();
 }
 
 const dormir = (ms) => new Promise((r) => setTimeout(r, ms));
-
-// ---- Configuración del servidor MCP ------------------------------------------------
-// El nombre del servidor lo registra el usuario en cada herramienta y viene de
-// `mcp.sonarqube` de .agents/stack.yaml. La búsqueda nunca imprime el contenido de esos
-// archivos ni los valores de env/environment; en mensajes de error el token sale como ***.
-function nombreServidor() {
-  const n = String(stackGet('mcp.sonarqube') ?? '').trim();
-  if (!n) infra('mcp.sonarqube de .agents/stack.yaml está vacío: fija en él el nombre con el que el servidor MCP de SonarQube está registrado en tus herramientas.');
-  return n;
-}
-
-// Normaliza la entrada a { command, args, env }:
-//   formato 'json'     → command + args + env (Claude Code, Gemini, Antigravity, VS Code, SONARQUBE_MCP_CONFIG)
-//   formato 'opencode' → command como lista (ejecutable y argumentos) + environment
-// Devuelve null si la entrada no sigue el formato esperado (el nombre se sigue buscando en el próximo archivo).
-function normalizar(e, formato) {
-  if (!e || typeof e !== 'object') return null;
-  if (formato === 'opencode') {
-    if (!Array.isArray(e.command) || e.command.length === 0 || typeof e.command[0] !== 'string' || !e.command[0]) return null;
-    const env = {};
-    if (e.environment && typeof e.environment === 'object') {
-      for (const [k, v] of Object.entries(e.environment)) if (typeof v === 'string') env[k] = v;
-    }
-    return { command: e.command[0], args: e.command.slice(1).map(String), env };
-  }
-  if (typeof e.command !== 'string' || !e.command) return null;
-  const env = {};
-  if (e.env && typeof e.env === 'object') {
-    for (const [k, v] of Object.entries(e.env)) if (typeof v === 'string') env[k] = v;
-  }
-  return { command: e.command, args: Array.isArray(e.args) ? e.args.map(String) : [], env };
-}
-
-// Codex (~/.codex/config.toml): lector TOML mínimo, solo para las tablas del servidor MCP:
-// `[mcp_servers.<nombre>]` (claves `command` y `args`: texto y listas de texto) y
-// `[mcp_servers.<nombre>.env]` (valores de texto). Ignora el resto del archivo y cualquier
-// otra sintaxis: si la hubiese, la búsqueda con Codex no resuelve y sigue el orden habitual.
-function entradaToml(texto, nombre) {
-  const quitarComentario = (linea) => {
-    let s = '';
-    let enCadena = false;
-    for (let i = 0; i < linea.length; i++) {
-      const c = linea[i];
-      if (enCadena) {
-        s += c;
-        if (c === '\\' && i + 1 < linea.length) s += linea[++i];
-        else if (c === '"') enCadena = false;
-      } else if (c === '"') { enCadena = true; s += c; }
-      else if (c === '#') break;
-      else s += c;
-    }
-    return s;
-  };
-  const valor = (bruto) => {
-    try {
-      const v = JSON.parse(bruto.replace(/,\s*\]/g, ']'));      // tolera coma final en listas
-      if (typeof v === 'string') return v;
-      if (Array.isArray(v) && v.every((x) => typeof x === 'string')) return v;
-    } catch { return null; }
-    return null;
-  };
-  let en = null;
-  const base = {};
-  const entorno = {};
-  for (const cruda of texto.split(/\r?\n/)) {
-    const linea = quitarComentario(cruda).trim();
-    if (!linea) continue;
-    const mT = linea.match(/^\[\s*mcp_servers\.([A-Za-z0-9_-]+)\.env\s*\]$/);
-    const mS = mT ? null : linea.match(/^\[\s*mcp_servers\.([A-Za-z0-9_-]+)\s*\]$/);
-    if (mT) { en = mT[1]; continue; }
-    if (mS) { en = mS[1]; continue; }
-    if (en === null) continue;
-    const m = linea.match(/^([A-Za-z0-9_-]+)\s*=\s*(.+?)\s*$/);
-    if (!m) continue;
-    const v = valor(m[2]);
-    if (v === null) continue;
-    if (en === nombre) {
-      if (m[1] === 'command' || m[1] === 'args') base[m[1]] = v;
-    } else if (en === `${nombre}.env` && typeof v === 'string') {
-      entorno[m[1]] = v;
-    }
-  }
-  if (typeof base.command !== 'string' || !base.command) return null;
-  return normalizar({ command: base.command, args: base.args, env: entorno }, 'json');
-}
-
-// Archivos de las herramientas (gana el primero que exista y tenga el servidor buscado).
-const FORMATOS_HERRAMIENTA = [
-  { nombre: 'Claude Code', donde: 'mcpServers.<nombre> (y si no, projects.<repo>.mcpServers.<nombre>)',
-    archivo: () => path.join(os.homedir(), '.claude.json'),
-    entrar: (texto, nombre) => {
-      let e = texto?.mcpServers?.[nombre];
-      if (!e) {
-        const proys = texto?.projects ?? {};
-        if (proys[process.cwd()]?.mcpServers?.[nombre]) e = proys[process.cwd()].mcpServers[nombre];
-        else {
-          for (const cfg2 of Object.values(proys)) {
-            if (cfg2 && typeof cfg2 === 'object' && cfg2.mcpServers?.[nombre]) { e = cfg2.mcpServers[nombre]; break; }
-          }
-        }
-      }
-      return normalizar(e, 'json');
-    } },
-  { nombre: 'Gemini CLI', donde: 'mcpServers.<nombre>', archivo: () => path.join(os.homedir(), '.gemini', 'config', 'mcp_config.json'),
-    entrar: (texto, nombre) => normalizar(texto?.mcpServers?.[nombre], 'json') },
-  { nombre: 'Antigravity', donde: 'mcpServers.<nombre>', archivo: () => path.join(os.homedir(), '.gemini', 'antigravity', 'mcp_config.json'),
-    entrar: (texto, nombre) => normalizar(texto?.mcpServers?.[nombre], 'json') },
-  { nombre: 'OpenCode', donde: 'mcp.<nombre>', archivo: () => path.join(os.homedir(), '.config', 'opencode', 'opencode.json'),
-    entrar: (texto, nombre) => normalizar(texto?.mcp?.[nombre], 'opencode') },
-  { nombre: 'VS Code', donde: 'servers.<nombre>', archivo: () => path.join(os.homedir(), '.config', 'Code', 'User', 'mcp.json'),
-    entrar: (texto, nombre) => normalizar(texto?.servers?.[nombre], 'json') },
-  { nombre: 'Codex', donde: 'mcp_servers.<nombre> (y su tabla .env)', archivo: () => path.join(os.homedir(), '.codex', 'config.toml'),
-    entrar: entradaToml },
-];
-
-function resolverServidor() {
-  const nombre = nombreServidor();
-  const env = process.env;
-  if (env.SONARQUBE_MCP_JAR && env.SONARQUBE_URL && env.SONARQUBE_TOKEN) {
-    return {
-      command: 'java',
-      args: ['-jar', env.SONARQUBE_MCP_JAR],
-      env: {
-        SONARQUBE_URL: env.SONARQUBE_URL,
-        SONARQUBE_TOKEN: env.SONARQUBE_TOKEN,
-        STORAGE_PATH: env.SONARQUBE_STORAGE_PATH ?? fs.mkdtempSync(path.join(os.tmpdir(), 'sonar-mcp-')),
-      },
-      servidor: nombre,
-      origen: 'variables de entorno (SONARQUBE_MCP_JAR + SONARQUBE_URL + SONARQUBE_TOKEN)',
-    };
-  }
-  if (env.SONARQUBE_MCP_CONFIG) {
-    try {
-      const json = JSON.parse(fs.readFileSync(env.SONARQUBE_MCP_CONFIG, 'utf8'));
-      const e = normalizar(json?.mcpServers?.[nombre], 'json');
-      if (e) return { ...e, servidor: nombre, origen: `SONARQUBE_MCP_CONFIG (${env.SONARQUBE_MCP_CONFIG}) > mcpServers.${nombre}` };
-    } catch { /* sin entrada válida se sigue con los archivos de las herramientas */ }
-  }
-  const revisados = [];
-  for (const f of FORMATOS_HERRAMIENTA) {
-    const ruta = f.archivo();
-    if (!fs.existsSync(ruta)) continue;
-    revisados.push(ruta);
-    try {
-      let datos = fs.readFileSync(ruta, 'utf8');
-      if (ruta.endsWith('.json')) datos = JSON.parse(datos);
-      const e = f.entrar(datos, nombre);
-      if (e) return { ...e, servidor: nombre, origen: `${f.nombre} (${ruta}) > ${f.donde.replace('<nombre>', nombre)}` };
-    } catch { /* ilegible o con formato no esperado: se sigue con el archivo siguiente */ }
-  }
-  const lista = revisados.length
-    ? revisados.join(', ')
-    : 'ninguno existe: ' + FORMATOS_HERRAMIENTA.map((f) => f.archivo()).join(', ');
-  infra(`no se encontró el servidor MCP de SonarQube '${nombre}' (valor de mcp.sonarqube de .agents/stack.yaml). Archivos revisados: ${lista}. Alternativas: registra el servidor ${nombre} en alguno de esos archivos, deja un JSON con la entrada mcpServers.${nombre} apuntado por SONARQUBE_MCP_CONFIG, o fija las variables SONARQUBE_MCP_JAR + SONARQUBE_URL + SONARQUBE_TOKEN. No se imprime el contenido de esos archivos.`);
-  return null;   // no se llega: infra termina el proceso
-}
 
 // ---- Cliente MCP por stdio ---------------------------------------------------------
 class ClienteMcp {
@@ -257,10 +95,14 @@ class ClienteMcp {
       env: { ...process.env, ...this.cfg.env },
       stdio: ['pipe', 'pipe', 'ignore'],
     });
-    hijo.on('error', (e) => infra(`no se pudo arrancar el servidor MCP (${this.cfg.command}): ${e.message}`));
+    hijo.once('close', () => { hijo._sonarCerrado = true; });
+    hijo.on('error', () => {
+      for (const p of this.pend.values()) { clearTimeout(p.timer); p.reject(new Error('No se pudo arrancar el servidor MCP.')); }
+      this.pend.clear();
+    });
     hijo.stdin.on('error', () => { /* el proceso terminó: el rechazo llega por 'exit' */ });
     hijo.on('exit', (code) => {
-      for (const { reject } of this.pend.values()) reject(new Error(hintInfraSonar(`el servidor MCP terminó (código ${code})`)));
+      for (const { reject, timer } of this.pend.values()) { clearTimeout(timer); reject(new Error(hintInfraSonar(`el servidor MCP terminó (código ${code})`))); }
       this.pend.clear();
     });
     hijo.stdout.on('data', (d) => this.alRecibir(d));
@@ -314,6 +156,7 @@ class ClienteMcp {
         if (res?.structuredContent) return res.structuredContent;
         try { return JSON.parse(texto); } catch { return { texto }; }
       } catch (e) {
+    if (e instanceof Salida) throw e;
         ultimo = e;
         if (intento < REINTENTOS) await dormir(ESPERA_REINTENTO_MS);
       }
@@ -380,6 +223,7 @@ async function registrarProyecto(cfg, projectKey) {
     process.stdout.write(`proyecto privado creado (HTTP ${created.status}).\n`);
     limpiarYSalir(0);
   } catch (e) {
+    if (e instanceof Salida) throw e;
     if (e?.message?.startsWith('BLOCKED')) throw e;
     infra(`no se pudo registrar el proyecto: sin respuesta HTTP (${e.name ?? 'Error'}).`);
   }
@@ -399,7 +243,7 @@ function hintInfraSonar(msg) {
   const t = String(msg ?? '');
   const early = t.includes('el servidor MCP terminó');
   if (t.includes('CancellationException') || early) {
-    return t + ' el servidor MCP de SonarQube no pudo iniciar su análisis; revisa <SONARQUBE_STORAGE_PATH o la carpeta de almacenamiento del MCP>/logs/mcp.log; si muestra `90028` o `MVStoreException` en `h2/sq-ide.mv.db`, cierra las herramientas que usan el MCP, renombra ese archivo y vuelve a intentarlo.';
+    return t + ' el servidor MCP de SonarQube no pudo iniciar su análisis; revisa <SONARQUBE_STORAGE_PATH o la carpeta de almacenamiento del MCP>/logs/mcp.log; si muestra `90028` o `MVStoreException` en `h2/sq-ide.mv.db`, si defines SONARQUBE_STORAGE_PATH compartida, evita usarla a la vez desde varios procesos y vuelve a intentarlo.';
   }
   return t;
 }
@@ -443,6 +287,7 @@ function comprobarRecibo(rutaRecibo, baseOverride) {
   try {
     seleccion = leerFicherosTocados({ base });
   } catch (e) {
+    if (e instanceof Salida) throw e;
     process.stderr.write(`recibo no verificable: ${e.message}\n`);
     return 1;
   }
@@ -572,6 +417,7 @@ async function modoGate(mcp, projectKeys, opciones, versionSrv) {
         const r = await mcp.herramienta('show_rule', { key: ruleKey });
         explicaciones[ruleKey] = String(r.texto ?? JSON.stringify(r)).replace(/\s+/g, ' ').slice(0, 400);
       } catch (e) {
+    if (e instanceof Salida) throw e;
         explicaciones[ruleKey] = `no disponible: ${limpiar(e.message)}`;
       }
     }
@@ -584,6 +430,7 @@ async function modoGate(mcp, projectKeys, opciones, versionSrv) {
       const r = await mcp.herramienta('get_project_quality_gate_status', { projectKey: pk });
       qualityGate[pk] = r.status ?? 'desconocido';
     } catch (e) {
+    if (e instanceof Salida) throw e;
       qualityGate[pk] = `no disponible: ${limpiar(e.message)}`;
     }
   }
@@ -600,12 +447,16 @@ async function modoGate(mcp, projectKeys, opciones, versionSrv) {
   };
   process.stdout.write(JSON.stringify(salida, null, 2) + '\n');
   const exitCode = bloquea ? 1 : 0;
-  try { escribirRecibo(opciones.recibo, exitCode, opciones.base ?? (base.split(' ')[0] || null), ficheros); } catch (e) { infra(`no se pudo escribir el recibo: ${e.message}`); }
+  try { escribirRecibo(opciones.recibo, exitCode, opciones.base ?? (base.split(' ')[0] || null), ficheros); } catch (e) {
+    if (e instanceof Salida) throw e;
+    infra(`no se pudo escribir el recibo: ${e.message}`);
+  }
   process.stderr.write(`sonar-diff-gate: ${salida.veredicto} (${ficheros.length} fichero(s), ${llamadas} llamada(s), ${aciertos} acierto(s) de caché).\n`);
   limpiarYSalir(exitCode);
 }
 
 // ---- Entrada -----------------------------------------------------------------------
+async function main() {
 const opciones = { canary: false, explain: false, base: null, resolverConfig: false, registrarProyecto: null, recibo: null, comprobarRecibo: null };
 const argv = process.argv.slice(2);
 for (let i = 0; i < argv.length; i++) {
@@ -637,16 +488,13 @@ if (opciones.comprobarRecibo) {
   limpiarYSalir(comprobarRecibo(opciones.comprobarRecibo, opciones.base));
 }
 
-const cfg = resolverServidor();   // si no resuelve, ya terminó con su mensaje de no-encontrado
+const cfg = configuracion = await resolverServidor({ crearStorage: !opciones.resolverConfig && !opciones.registrarProyecto });
+TOKEN_A_OCULTAR = cfg.env.SONARQUBE_TOKEN;
 if (opciones.resolverConfig) {
-  // Modo diagnóstico de la búsqueda (para pruebas con HOME falso): imprime solo de qué
-  // archivo y con qué nombre resolvió; nunca valores de command/args/env.
-  process.stdout.write(JSON.stringify({ servidor: cfg.servidor, origen: cfg.origen }, null, 2) + '\n');
+  process.stdout.write(JSON.stringify(cfg.origen, null, 2) + '\n');
   limpiarYSalir(0);
 }
 if (opciones.registrarProyecto) await registrarProyecto(cfg, opciones.registrarProyecto);
-TOKEN_A_OCULTAR = cfg.env?.SONARQUBE_TOKEN ?? '';
-if (!cfg.env?.SONARQUBE_URL) infra('la configuración del MCP de SonarQube no define SONARQUBE_URL.');
 
 const mcp = new ClienteMcp(cfg);
 try {
@@ -657,5 +505,28 @@ try {
   if (opciones.canary) await modoCanario(mcp, projectKeys);
   else await modoGate(mcp, projectKeys, opciones, versionSrv);
 } catch (e) {
+    if (e instanceof Salida) throw e;
   infra(hintInfraSonar(`MCP SonarQube no responde o falló: ${e.message}`));
 }
+
+}
+
+async function ejecutar() {
+  const interrumpir = () => { cerrar().finally(() => process.exit(2)); };
+  process.once('SIGINT', interrumpir);
+  process.once('SIGTERM', interrumpir);
+  try { await main(); }
+  catch (e) {
+    if (e instanceof Salida) process.exitCode = e.code;
+    else {
+      process.stderr.write(`BLOCKED (infraestructura): ${e.codigo ? e.message : 'Fallo del servidor MCP.'}\n`);
+      process.exitCode = 2;
+    }
+  } finally {
+    try { await cerrar(); }
+    catch { process.stderr.write('BLOCKED (infraestructura): no se pudo limpiar el almacenamiento temporal.\n'); process.exitCode = 2; }
+    process.removeListener('SIGINT', interrumpir);
+    process.removeListener('SIGTERM', interrumpir);
+  }
+}
+if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) await ejecutar();
