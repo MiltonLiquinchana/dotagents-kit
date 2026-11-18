@@ -35,7 +35,9 @@ Solo herramientas de lectura (`schema_`, `query_`, `performance_`). NUNCA usar `
 
 ## Validación con Codebase Memory
 
-Para relaciones entre objetos consulta `tgrep` sobre `knowledge-base/`, `db-index.py` y el MCP en modo lectura (`schema_<conexión>`, `query_<conexión>`). Solo si `herramientas.codebase_memory` es `true` y `python3 -I -B .agents/scripts/codebase-memory.py --comprobar` da OK, complementa el SQL fuera de `.dbcnb` con `codebase-memory-mcp cli detect_changes --project "<proyecto>" --scope impact`, `codebase-memory-mcp cli trace_path --project "<proyecto>" --function-name "<símbolo>" --direction inbound` y `codebase-memory-mcp cli get_architecture --project "<proyecto>" --aspects '["cycles"]'`.
+Con `herramientas.codebase_memory: true`, antes de usar `detect_changes`, lee `git.rama_base` con `python3 -B -E .agents/scripts/stack.py get git.rama_base`. Sustituye `<git.rama_base>` por ese valor; si es `null`, omite `--base-branch "<git.rama_base>"` para usar la base predeterminada de CBM.
+
+Para relaciones entre objetos consulta `tgrep` sobre `knowledge-base/`, `db-index.py` y el MCP en modo lectura (`schema_<conexión>`, `query_<conexión>`). Solo si `herramientas.codebase_memory` es `true` y `python3 -I -B .agents/scripts/codebase-memory.py --comprobar` da OK, complementa el SQL fuera de `.dbcnb` con `codebase-memory-mcp cli detect_changes --project "<proyecto>" --scope impact --base-branch "<git.rama_base>"`, `codebase-memory-mcp cli trace_path --project "<proyecto>" --function-name "<símbolo>" --direction inbound` y `codebase-memory-mcp cli get_architecture --project "<proyecto>" --aspects '["cycles"]'`.
 Los candidatos a duplicación o código muerto son observaciones, nunca bloqueos. Los acoplamientos requieren verificación en fuente; no atribuyas a CBM dependencias de notebooks.
 
 ## Tareas

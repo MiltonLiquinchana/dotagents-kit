@@ -32,8 +32,10 @@ Si falta un artefacto obligatorio, no trabajes: escribe la salida con `estado: b
 
 ## Tareas
 
+Con `herramientas.codebase_memory: true`, antes de usar `detect_changes`, lee `git.rama_base` con `node .agents/scripts/stack.mjs get git.rama_base`. En los comandos siguientes sustituye `<git.rama_base>` por ese valor; si es `null`, omite `--base-branch "<git.rama_base>"` para usar la base predeterminada de CBM.
+
 1. **Tarea 1 — Arquitectura**: Valida que se respeta el flujo UI → Controller → Service → Repository.
-   - Consulta `codebase-memory-mcp cli detect_changes --project "<proyecto>" --scope impact`, `codebase-memory-mcp cli trace_path --project "<proyecto>" --function-name "<símbolo>" --direction inbound` y `codebase-memory-mcp cli get_architecture --project "<proyecto>" --aspects '["cycles"]'` sobre los archivos nuevos/modificados y confirma los saltos de capa en la fuente. Una conexión directa UI → Repository (saltando Controller/Service) o UI → API (sin pasar por las capas) es **Bloqueante**.
+   - Consulta `codebase-memory-mcp cli detect_changes --project "<proyecto>" --scope impact --base-branch "<git.rama_base>"`, `codebase-memory-mcp cli trace_path --project "<proyecto>" --function-name "<símbolo>" --direction inbound` y `codebase-memory-mcp cli get_architecture --project "<proyecto>" --aspects '["cycles"]'` sobre los archivos nuevos/modificados y confirma los saltos de capa en la fuente. Una conexión directa UI → Repository (saltando Controller/Service) o UI → API (sin pasar por las capas) es **Bloqueante**.
    - Usa `codebase-memory-mcp cli trace_path --project "<proyecto>" --function-name "<símbolo>" --direction inbound` para confirmar dependencias sospechosas.
    - Si `graph-status.md` avisa grafo desactualizado, un `codebase-memory-mcp cli search_graph --project "<proyecto>" --name-pattern ".*<símbolo>.*"` vacío no cuenta como "sin dependencias".
 <!-- si frontend.llamadas_api=navegador -->

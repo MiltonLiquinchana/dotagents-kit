@@ -1118,8 +1118,12 @@ Completa `.agents/rules/project.md` con estructura, integraciones sin credencial
 archivos sensibles; el generador lo crea una vez y no lo sobrescribe. Puedes consultar como referencia
 `<KIT>/ejemplos/<carpeta de tu stack>/project.md`: es un proyecto ficticio completado; no tienes que tocarlo.
 
+### El índice de Codebase Memory
+
+El índice vive en la caché de tu cuenta (`~/.cache/codebase-memory-mcp`), fuera del repositorio, y se crea una vez por cada copia del repositorio (clon o worktree). El preflight lo comprueba y, al empezar las tareas de código (grupo E), lo reindexa hasta 120 s; si no termina a tiempo, avisa y sigue con el índice anterior. Puedes ver el nombre del proyecto con `python3 -I -B .agents/scripts/codebase-memory.py --resolver` y listar los índices con `codebase-memory-mcp cli list_projects`. Un índice que sobra, por ejemplo de un clon borrado o movido, se borra con `codebase-memory-mcp cli delete_project --project <nombre>`.
+
 ### Migración a Codebase Memory
 
-Renombra `herramientas.graphify` a `herramientas.codebase_memory` en `stack.yaml`. Ejecuta `bash .agents/scripts/preparar-proyecto.sh` para crear `.cbmignore`: copia también tus exclusiones de `.graphifyignore`. Revisa y confirma `.cbmignore` en Git; después puedes borrar `graphify-out/` y `.graphifyignore`. El índice es local: cada máquina lo crea una vez.
+Renombra `herramientas.graphify` a `herramientas.codebase_memory` en `stack.yaml`. Ejecuta `bash .agents/scripts/preparar-proyecto.sh` para crear `.cbmignore`: copia también tus exclusiones de `.graphifyignore`. Revisa y confirma `.cbmignore` en Git; después puedes borrar `graphify-out/` y `.graphifyignore`. El índice es local: se crea una vez por cada copia del repositorio (clon o worktree).
 
 Versión probada de la CLI: 0.12.1. Para actualizar, `codebase-memory-mcp update -y` imprime el comando del instalador que debes ejecutar.

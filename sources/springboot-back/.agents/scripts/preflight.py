@@ -190,24 +190,47 @@ class Preflight:
         if not cli:
             self.add('HERRAMIENTA', "CLI codebase-memory-mcp no encontrada en PATH. Instala solo el binario con: curl -fsSL https://raw.githubusercontent.com/DeusData/codebase-memory-mcp/main/install.sh | bash -s -- --skip-config")
             return
-        _, version = self.output([cli, '--version'])
+        try:
+            result = subprocess.run([cli, '--version'], capture_output=True, text=True,
+                                    encoding='utf-8', errors='replace', timeout=30)
+            version = '\n'.join(x.strip() for x in (result.stdout, result.stderr) if x.strip())
+        except (OSError, subprocess.TimeoutExpired):
+            version = ''
         print('✅ OK (' + (version.splitlines()[0] if version else 'versión no informada') + ')')
+
+        def mostrar(texto):
+            for line in texto.splitlines():
+                if line.startswith('AVISO'):
+                    self.add('GRAFO_AVISO', line)
+                else:
+                    print(line)
+
         rc, out = self.output(self.python('codebase-memory.py', '--comprobar'))
-        if rc or out.startswith('FALTA'):
+        lines = out.splitlines()
+        if rc or any(line.startswith(('BLOCKED', 'FALTA')) for line in lines):
+            for line in lines:
+                if line.startswith('AVISO'):
+                    self.add('GRAFO_AVISO', line)
+        if rc == 2 or any(line.startswith('BLOCKED') for line in lines):
+            self.add('GRAFO', 'fallo de CBM (no del índice): ' + out)
+            return
+        if rc == 1 or any(line.startswith('FALTA') for line in lines):
             self.add('GRAFO', out)
             return
-        if out.startswith('AVISO'):
-            self.add('GRAFO_AVISO', out)
-        else:
-            print(out)
-        if self.phase == 'entrada':
-            rc, out = self.output(self.python('codebase-memory.py', '--indexar'))
+        if rc:
+            self.add('GRAFO', 'fallo de CBM (no del índice): ' + out)
+            return
+        mostrar(out)
+        if (self.phase == 'entrada' and self.workflow
+                and self.data['workflows'][self.workflow]['grupo'] == 'E'):
+            rc, out = self.output(self.python('codebase-memory.py', '--indexar', '--timeout', '120'))
             if rc:
                 self.add('GRAFO_AVISO', 'el índice existe pero no se pudo actualizar: ' + out)
-            elif out.startswith('AVISO'):
-                self.add('GRAFO_AVISO', out)
+                for line in out.splitlines():
+                    if line.startswith('AVISO'):
+                        self.add('GRAFO_AVISO', line)
             else:
-                print(out)
+                mostrar(out)
 
     def registro(self, ctx):
         registry = self.registry

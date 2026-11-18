@@ -295,10 +295,10 @@ Estas fichas explican tus decisiones de `stack.yaml`. Los ejemplos se adaptan a 
 
 **En resumen:** Decide si el agente usa Codebase Memory para relacionar archivos y símbolos del código mediante su CLI.
 
-**Dónde se ve en tu proyecto:** Se declara en `stack.yaml`. El índice vive en la caché local de CBM, no en el repositorio; cada máquina lo crea una vez. `.cbmignore` acompaña a `.agents/` y excluye `knowledge-base/` y `.agents/`.
+**Dónde se ve en tu proyecto:** Se declara en `stack.yaml`. El índice vive en la caché local de CBM, no en el repositorio; se crea una vez por cada copia del repositorio (clon o worktree). `.cbmignore` acompaña a `.agents/` y excluye `knowledge-base/` y `.agents/`.
 
 **Para qué se usa:**
-- El preflight comprueba la CLI `codebase-memory-mcp` y el índice real del proyecto; si el índice existe, lo reindexa en la entrada para incorporar los cambios. En el cierre solo comprueba su estado.
+- El preflight comprueba la CLI `codebase-memory-mcp` y el índice real del proyecto; si el índice existe, lo reindexa en la entrada de las tareas de código (grupo E), con un límite de 120 s, para incorporar los cambios. En el cierre solo comprueba su estado.
 - Las consultas del código y sus actualizaciones se condicionan a esta clave. Las decisiones documentadas en `knowledge-base/` se consultan con `tgrep`.
 
 **Qué pasa si está mal:** Si falta la CLI, informa `HERRAMIENTA`; si falta el proyecto o el índice no está listo, informa `GRAFO`. Un índice vacío, degradado al indexar o que no se pudo actualizar produce `GRAFO_AVISO`. El tratamiento depende del workflow según el catálogo de códigos. La falta de preparación de `.cbmignore` se informa como `PREPARACION`. Desactivar la clave omite el grafo y conserva los demás controles.

@@ -402,7 +402,7 @@ Si hay varios locks, pregunta cuál vale; el agente podrá quitar el sobrante en
     en una entrada de `devops.entornos` y pregúntale por los demás entornos.
 
 17. **`herramientas.codebase_memory`:** `true` exige la CLI `codebase-memory-mcp` instalada; pregunta si la tiene. Si no, propón `false` o este comando para instalar solo el binario, sin ejecutarlo:
-    `curl -fsSL https://raw.githubusercontent.com/DeusData/codebase-memory-mcp/main/install.sh | bash -s -- --skip-config`. El índice es local: cada máquina lo crea una vez.
+    `curl -fsSL https://raw.githubusercontent.com/DeusData/codebase-memory-mcp/main/install.sh | bash -s -- --skip-config`. El índice es local: se crea una vez por cada copia del repositorio (clon o worktree).
 18. **`api_error.campo_codigo`** (back y front): antes de preguntar, muestra el ejemplo de `claves.md`, un
     cuerpo de error con y sin código, y para qué sirve; sin manejador, su respuesta define el contrato desde ahora. Recomienda `null` salvo que su API ya publique un
     código de negocio; se puede activar después.

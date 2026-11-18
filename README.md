@@ -22,7 +22,7 @@ Requisitos: Git, Python 3, `jq`, `tgrep`, Open Notebook con un proveedor de mode
 ejecutar comandos y escribir archivos; según el stack, Node.js, `curl`, SonarQube y su servidor MCP
 (back y front), JDK (back) y Java para el servidor MCP de SonarQube (back y front), PyYAML y
 Docker/Podman (SQL), y `db-mcp-server` para los pasos con la base real (SQL).
-Con `herramientas.codebase_memory: true` necesitas también la CLI [Codebase Memory](https://github.com/DeusData/codebase-memory-mcp); el índice es local y cada máquina lo crea una vez.
+Con `herramientas.codebase_memory: true` necesitas también la CLI [Codebase Memory](https://github.com/DeusData/codebase-memory-mcp); el índice es local y se crea una vez por cada copia del repositorio (clon o worktree).
 Consulta la [tabla de requisitos](manual-usuario.md#requisitos).
 
 1. Clona este repositorio con `git clone <url>`; en la documentación esa ruta se llama `<KIT>`.

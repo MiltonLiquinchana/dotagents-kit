@@ -22,7 +22,9 @@ Si falta un artefacto obligatorio, no trabajes: escribe la salida con `estado: b
 
 ## Tareas
 
-1. **Tarea 1 — Pruebas unitarias**: Solo con `herramientas.codebase_memory: true`, resuelve `<proyecto>` con `python3 -I -B .agents/scripts/codebase-memory.py --resolver` (exit 0) y consulta `codebase-memory-mcp cli detect_changes --project "<proyecto>" --scope tests` para localizar pruebas existentes que alcanzan el código cambiado. Es orientativo: si no devuelve nada, continúa; no sustituye ejecutar la suite. Escribe pruebas con Jest/Vitest para `services/` y `controllers/`.
+Con `herramientas.codebase_memory: true`, antes de usar `detect_changes`, lee `git.rama_base` con `node .agents/scripts/stack.mjs get git.rama_base`. En los comandos siguientes sustituye `<git.rama_base>` por ese valor; si es `null`, omite `--base-branch "<git.rama_base>"` para usar la base predeterminada de CBM.
+
+1. **Tarea 1 — Pruebas unitarias**: Solo con `herramientas.codebase_memory: true`, resuelve `<proyecto>` con `python3 -I -B .agents/scripts/codebase-memory.py --resolver` (exit 0) y consulta `codebase-memory-mcp cli detect_changes --project "<proyecto>" --scope tests --base-branch "<git.rama_base>"` para localizar pruebas existentes que alcanzan el código cambiado. Es orientativo: si no devuelve nada, continúa; no sustituye ejecutar la suite. Escribe pruebas con Jest/Vitest para `services/` y `controllers/`.
 2. **Tarea 2 — Mocks de Axios**: Crea mocks para respuestas exitosas (200) y de error (400, 500).
 <!-- si frontend.llamadas_api=navegador -->
 3. **Tarea 3 — Cobertura de escenarios**: Cubre caminos felices, errores de validación, y excepciones del ExceptionHandler.
