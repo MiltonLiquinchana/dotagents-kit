@@ -26,7 +26,7 @@ if [ "$COMPROBAR" -eq 1 ]; then
   report() { echo "$1"; MISSING=1; }
   [ -d knowledge-base ] || report "falta knowledge-base/"
   if [ -d knowledge-base ] && [ -z "$(find knowledge-base -mindepth 1 -maxdepth 1 -print -quit)" ] && [ ! -f knowledge-base/.gitkeep ]; then report "falta knowledge-base/.gitkeep"; fi
-  for line in '.agent-runs/' 'logs/' 'knowledge-base/.tgrep/'; do grep -Fqx -- "$line" .gitignore 2>/dev/null || report "falta línea en .gitignore: $line"; done
+  for line in '.agent-runs/' 'logs/' 'knowledge-base/.tgrep/' '.agents/.cache/'; do grep -Fqx -- "$line" .gitignore 2>/dev/null || report "falta línea en .gitignore: $line"; done
 # si devops.infraestructura=jenkins-kubernetes
   grep -Fqx -- 'devops/*/account/' .gitignore 2>/dev/null || report 'falta línea en .gitignore: devops/*/account/'
   RASTREADOS=$(git ls-files -- ':(glob)devops/*/account/**')
@@ -57,7 +57,7 @@ if [ ! -d knowledge-base ]; then mkdir -p knowledge-base; : > knowledge-base/.gi
 elif [ -z "$(find knowledge-base -mindepth 1 -maxdepth 1 -print -quit)" ]; then
   if [ ! -f knowledge-base/.gitkeep ]; then : > knowledge-base/.gitkeep; echo "creado knowledge-base/.gitkeep"; CHANGED=1; fi
 fi
-for line in '.agent-runs/' 'logs/' 'knowledge-base/.tgrep/'; do ensure_line .gitignore "$line"; done
+for line in '.agent-runs/' 'logs/' 'knowledge-base/.tgrep/' '.agents/.cache/'; do ensure_line .gitignore "$line"; done
 # si devops.infraestructura=jenkins-kubernetes
 ensure_line .gitignore 'devops/*/account/'
 RASTREADOS=$(git ls-files -- ':(glob)devops/*/account/**')

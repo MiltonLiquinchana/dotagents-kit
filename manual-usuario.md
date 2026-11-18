@@ -175,6 +175,21 @@ Sigue este orden:
 
 1. Ejecuta `bash .agents/scripts/preparar-proyecto.sh`: crea auxiliares que faltan y prepara exclusiones.
    Revisa y haz el commit `chore: preparar el proyecto para .agents` en tu repositorio.
+
+   **Qué añade al `.gitignore`**
+
+   | Línea | Motivo | Stacks |
+   |---|---|---|
+   | `.agent-runs/` | carpetas de ejecución de cada tarea | todos |
+   | `logs/` | logs de herramientas | todos |
+   | `knowledge-base/.tgrep/` | índice de búsqueda de las notas | todos |
+   | `.agents/.cache/` | caché del gate de Sonar | back y front |
+   | `devops/*/account/` | Secrets de Kubernetes | back con Jenkins/Kubernetes |
+   | `__pycache__/` | caché de Python | SQL |
+   | `!.env.example` | versionar la plantilla de variables cuando se ignora `.env*` | front |
+
+   Codebase Memory guarda su índice fuera del repositorio (`~/.cache/codebase-memory-mcp`); no hace falta ignorarlo. `.cbmignore` sí se versiona: es configuración del proyecto.
+
 2. Si elegiste versiones distintas del código, pide change-version o ajusta tú las claves de versión de `stack.yaml` para que coincidan con las del código;
    change-version carga también la documentación de las versiones nuevas.
 3. Si `herramientas.codebase_memory` es `true`, pide `.agents/workflows/codebase-memory.md` para crear el grafo antes de

@@ -27,7 +27,7 @@ if [ "$COMPROBAR" -eq 1 ]; then
   report() { echo "$1"; MISSING=1; }
   [ -d knowledge-base ] || report "falta knowledge-base/"
   if [ -d knowledge-base ] && [ -z "$(find knowledge-base -mindepth 1 -maxdepth 1 -print -quit)" ] && [ ! -f knowledge-base/.gitkeep ]; then report "falta knowledge-base/.gitkeep"; fi
-  for line in '.agent-runs/' 'logs/' 'knowledge-base/.tgrep/'; do grep -Fqx -- "$line" .gitignore 2>/dev/null || report "falta línea en .gitignore: $line"; done
+  for line in '.agent-runs/' 'logs/' 'knowledge-base/.tgrep/' '.agents/.cache/'; do grep -Fqx -- "$line" .gitignore 2>/dev/null || report "falta línea en .gitignore: $line"; done
   if [ -f .agents/config/eslint.agent.config.mjs ]; then
     ESLINT_DEST=$(node "$SCRIPTS/stack.mjs" get frontend.eslint_config 2>/dev/null) || ESLINT_DEST=""
     if [ -z "$ESLINT_DEST" ]; then report "no se pudo leer frontend.eslint_config"; elif [ ! -f "$ESLINT_DEST" ]; then report "falta $ESLINT_DEST"; fi
@@ -54,7 +54,7 @@ if [ ! -d knowledge-base ]; then mkdir -p knowledge-base; : > knowledge-base/.gi
 elif [ -z "$(find knowledge-base -mindepth 1 -maxdepth 1 -print -quit)" ]; then
   if [ ! -f knowledge-base/.gitkeep ]; then : > knowledge-base/.gitkeep; echo "creado knowledge-base/.gitkeep"; CHANGED=1; fi
 fi
-for line in '.agent-runs/' 'logs/' 'knowledge-base/.tgrep/'; do ensure_line .gitignore "$line"; done
+for line in '.agent-runs/' 'logs/' 'knowledge-base/.tgrep/' '.agents/.cache/'; do ensure_line .gitignore "$line"; done
 # Config de ESLint del agente: copia la plantilla a la ruta de frontend.eslint_config solo si
 # el destino todavía no existe (idempotente: si ya existe, no se toca).
 ESLINT_SRC='.agents/config/eslint.agent.config.mjs'
