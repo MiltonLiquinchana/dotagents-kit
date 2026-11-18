@@ -26,7 +26,7 @@ Si `context.md` contiene `enfoques_descartados`, no repropongas esos enfoques si
 
 1. **Tarea 1 — Jerarquía de Componentes**: Define estructura de carpetas y árbol de componentes según el árbol canónico de `.agents/rules/architecture-rules.md` § 1.
 2. **Tarea 2 — Auditoría de Componentes Reutilizables (obligatoria antes de proponer uno nuevo)**:
-   1. Usa `codebase-memory-mcp cli search_graph --project "<proyecto>" --name-pattern ".*<símbolo>.*"`; si no basta, complementa con `codebase-memory-mcp cli search_graph --project "<proyecto>" --semantic-query '["texto"]'` para identificar candidatos a reutilizar.
+   1. Usa `codebase-memory-mcp cli search_graph --project "<proyecto>" --name-pattern ".*<símbolo>.*"`; si no basta, complementa con `codebase-memory-mcp cli search_code --project "<proyecto>" --pattern "<texto literal>"` para localizar literales del código (mensajes, rutas, anotaciones o textos de la interfaz) e identificar candidatos a reutilizar; con `--regex true` admite una expresión regular.
    2. Para cada componente nuevo propuesto:
      - ¿Existe un componente base similar? Si sí → especifica cuál y cómo se reutiliza (envolver/extender/props), citando la query del grafo.
      - Si no → justifica por qué se requiere uno nuevo, y si es genérico, márcalo como candidato a componente base.

@@ -65,7 +65,7 @@ Los tools se generan dinámicamente por conexión, siempre con una conexión del
    codebase-memory-mcp cli trace_path --project "<proyecto>" --function-name "<símbolo>" --direction inbound
    codebase-memory-mcp cli get_architecture --project "<proyecto>"
    ```
-   Si la búsqueda por nombre no basta, complementa con `codebase-memory-mcp cli search_graph --project "<proyecto>" --semantic-query '["texto"]'`. Un resultado vacío no demuestra ausencia; revisa cobertura y fuente. Con índice ausente, omite el complemento sin error.
+   Si la búsqueda por nombre no basta, complementa con `codebase-memory-mcp cli search_code --project "<proyecto>" --pattern "<texto literal>"` para localizar un literal del código (un mensaje, o el nombre de una tabla o columna dentro de una consulta); con `--regex true` admite una expresión regular. Un resultado vacío no demuestra ausencia; revisa cobertura y fuente. Con índice ausente, omite el complemento sin error.
 7. **Tarea 7 — Detectar discrepancias**: Comparar lo encontrado en la BD real (MCP) con lo encontrado en notas de tgrep y notebooks leídos directamente. Reportar diferencias sin corregirlas.
 8. **Tarea 8 — Historial de correcciones (vinculante)**:
    ```bash
