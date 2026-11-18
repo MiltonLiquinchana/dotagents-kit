@@ -137,7 +137,7 @@ Esta sección complementa § 4 — aplica las estrategias de estado ya definidas
 Antes de ocultar, eliminar, renombrar o cambiar la firma de algo que otros ficheros importan o que el navegador solicita, identifica sus consumidores y decláralos en el Plan:
 
 - **Qué cuenta**: una ruta de `app/` (página o `route.ts`), un handler de API, un componente o hook exportado, un método público de un Controller/Service/Repository, un tipo de `domains/` o una variable `NEXT_PUBLIC_*`.
-- **Cómo se identifican**: `graphify query "qué importa <Archivo>"` (y `graphify path` si hay duda); para rutas, busca además los `href`, `router.push`, `redirect` y `fetch`/`apiClient` que apuntan a ella (el grafo no resuelve cadenas de URL).
+- **Cómo se identifican**: `codebase-memory-mcp cli trace_path --project "<proyecto>" --function-name "<símbolo>" --direction inbound` (y `codebase-memory-mcp cli trace_path --project "<proyecto>" --function-name "<símbolo>" --direction inbound` si hay duda); para rutas, busca además los `href`, `router.push`, `redirect` y `fetch`/`apiClient` que apuntan a ella (el grafo no resuelve cadenas de URL).
 - **Qué se declara**: la lista de consumidores y, por cada uno, si se actualiza en el mismo cambio o queda roto. Un consumidor sin actualizar es **Bloqueante** en la revisión de código.
 - **Cuándo se exige en revisión**: solo cuando el diff oculta, elimina o renombra algo exportado, o cambia su firma de forma incompatible. Un cambio aditivo no lo dispara.
 - **Límite**: el grafo indexa AST de código; no ve consumidores fuera del repositorio (otros proyectos, enlaces externos). Si hay sospecha de ellos, el Plan lo declara como riesgo.

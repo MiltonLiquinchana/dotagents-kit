@@ -34,7 +34,7 @@ const REQUIRED = [
   'frontend.notificaciones', 'frontend.llamadas_api',
   'sonarqube.url', 'sonarqube.project_key',
   'integraciones.autenticacion', 'mcp.sonarqube',
-  'herramientas.graphify', 'git.rama_base',
+  'herramientas.codebase_memory', 'git.rama_base',
 
 ];
 
@@ -258,8 +258,13 @@ function cargar() {
   return validarDatos(data, cargarCondiciones());
 }
 function validarDatos(data, meta, opciones = cargarOpciones()) {
-  validarCondicionales(data, meta);
   if (data === null || typeof data !== 'object' || Array.isArray(data)) bloqueado('el documento no es un mapa de claves');
+  const herramientas = data.herramientas;
+  if (herramientas && typeof herramientas === 'object' && !Array.isArray(herramientas) &&
+      !Object.hasOwn(herramientas, 'codebase_memory') && Object.hasOwn(herramientas, 'graphify')) {
+    herramientas.codebase_memory = herramientas.graphify;
+  }
+  validarCondicionales(data, meta);
   if (!('proyecto' in data) || data.proyecto === null || typeof data.proyecto !== 'object' || data.proyecto === undefined) {
     bloqueado("falta la clave 'proyecto'");
   }
@@ -327,9 +332,12 @@ export function get(clave) {
   return valor;
 }
 
-export function validar() {
+export function validar(avisarRetirada = false) {
   const data = cargar();
   validarOpciones(data);
+  if (avisarRetirada && Object.hasOwn(data.herramientas ?? {}, 'graphify')) {
+    process.stderr.write('aviso: herramientas.graphify está retirada; renómbrala a herramientas.codebase_memory en tu stack.yaml\n');
+  }
   return true;
 }
 
@@ -486,7 +494,7 @@ function main(argv) {
     return 0;
   }
   if (argv[0] === 'validate') {
-    validar();
+    validar(true);
     process.stdout.write(`OK: .agents/stack.yaml es válido para el stack '${STACK}'.\n`);
     return 0;
   }

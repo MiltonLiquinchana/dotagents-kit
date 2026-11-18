@@ -11,7 +11,7 @@ trigger: always_on
 
 ## Integraciones y seguridad
 - **SonarQube**: un proyecto por servicio; el `projectKey` sale de `.agents/stack.yaml`.
-- **Graphify y tgrep**: `knowledge-base/` está excluida de graphify vía `.graphifyignore` e indexada por `tgrep`.
+- **Codebase Memory y tgrep**: `knowledge-base/` está excluida de Codebase Memory vía `.cbmignore` e indexada por `tgrep`.
 
 <!-- si integraciones.autenticacion=clerk -->
 ### Clerk
@@ -20,7 +20,7 @@ trigger: always_on
 <!-- fin -->
 
 ## Grafo de conocimiento: estado actual
-- `knowledge-base/` y `.agents/` están excluidos vía `.graphifyignore`. Con `GRAPHIFY_BACKEND=none graphify . --update`, la actualización es solo AST, sin modelo.
+- `knowledge-base/` y `.agents/` están excluidos vía `.cbmignore`. Con `python3 -I -B .agents/scripts/codebase-memory.py --indexar`, la reindexación aplica `.cbmignore` al índice local.
 
 ## Archivos sensibles y protegidos
 - **Secretos**: `devops/*/secrets-*.yaml`, cualquier kubeconfig y cualquier `.env*`. No se leen ni se citan en notas o informes; el token de SonarQube se usa siempre como `$SONARQUBE_TOKEN`.

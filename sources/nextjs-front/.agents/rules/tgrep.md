@@ -5,7 +5,7 @@ description: Consult knowledge-base/ via tgrep for engineering history, past dec
 
 ## tgrep (notas de conocimiento, exclusivamente)
 
-`knowledge-base/` es la memoria de largo plazo del proyecto: decisiones, propósito y correcciones previas de cada fichero, en Markdown, indexadas por `tgrep` (no por graphify — ver `.agents/rules/graphify.md`). `tgrep` da recall exacto e instantáneo, sin costo de tokens.
+`knowledge-base/` es la memoria de largo plazo del proyecto: decisiones, propósito y correcciones previas de cada fichero, en Markdown, indexadas por `tgrep` (no por Codebase Memory — ver `.agents/rules/codebase-memory.md`). `tgrep` da recall exacto e instantáneo, sin costo de tokens.
 
 **Precondición bloqueante**: el preflight comprueba tgrep y solo puede arrancarlo en su fase sin bloqueos estrictos. Fuera de ella, confirma que el servidor está activo antes de consultar:
 ```bash
@@ -27,7 +27,7 @@ Si tras 3 reintentos de `tgrep status` (con 2 s de espera entre intentos y 1 s d
 - Si `knowledge-base/` solo contiene `.gitkeep` o no tiene ninguna nota `.md`, no hay historial que buscar: la fase registra "sin historial (`knowledge-base` vacío)" y continúa sin tgrep (no lo necesita).
 
 ## Reglas:
-- **Búsqueda literal previa, antes de razonar sobre una feature o un bug**: extrae 2-4 términos clave (mensaje de error exacto, nombre de símbolo, componente) y búscalos primero aquí — gratis y determinístico, a diferencia de `graphify query`:
+- **Búsqueda literal previa, antes de razonar sobre una feature o un bug**: extrae 2-4 términos clave (mensaje de error exacto, nombre de símbolo, componente) y búscalos primero aquí — para recuperar decisiones documentadas antes de consultar el índice de código:
 ```bash
   tgrep "<término exacto>" knowledge-base/ -C 3
   tgrep "<término>" knowledge-base/ -g "*-fixes.md" -C 3
@@ -37,4 +37,4 @@ Si tras 3 reintentos de `tgrep status` (con 2 s de espera entre intentos y 1 s d
   tgrep -F "fichero: <ruta relativa del código>" knowledge-base/ -l
 ```
 - **Historial de correcciones vinculante**: antes de proponer un enfoque, comprueba directamente si existe la nota por ruta completa: `knowledge-base/<ruta relativa del código sin extensión>-fixes.md` (no busques solo por nombre base, ya que archivos como `page.tsx` o `layout.tsx` generan falsos positivos). Si la nota existe, revisa si documentó un intento fallido sobre el mismo síntoma. Un enfoque ya marcado como fallido no puede reproponerse sin que el Plan documente por qué las condiciones cambiaron (ver análisis de contexto).
-- **Nunca esperes que graphify sepa esto.** Las dos fuentes son independientes por diseño.
+- **Nunca esperes que Codebase Memory sepa esto.** Las dos fuentes son independientes por diseño.

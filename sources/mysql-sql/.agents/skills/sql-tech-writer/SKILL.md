@@ -54,7 +54,7 @@ Si falta un artefacto obligatorio, no trabajes: escribe la salida con `estado: b
 - Solo documentar la realidad del código ejecutado y aprobado.
 - Evitar comentarios obvios. Enfocarse en el "por qué".
 - No modificar código SQL en esta etapa. Solo documentar.
-- No generes ni actualices `graphify-out/graph.json`.
+- No reindexes (`python3 -I -B .agents/scripts/codebase-memory.py --indexar`) desde aquí.
 - La documentación debe ser consistente con las reglas de nomenclatura y arquitectura. Si se detecta una discrepancia entre lo implementado y lo documentado, reportarlo sin corregir el código.
 
 ## Salida
@@ -98,7 +98,7 @@ Ejemplo de llamada: `CALL <nomenclatura.prefijo_procedimiento>nombre(param1, par
 Para documentar un objeto, escribe el Markdown solo en `docs-summary.md`. No escribas en notebooks ni solicites a la fase de persistencia que guarde documentación: la fase de documentación de objeto consume este artefacto cuando existe y guarda la celda mediante su comando canónico.
 
 
-Consulta y actualización condicional del grafo: usa graphify solo cuando `herramientas.graphify` en `.agents/stack.yaml` sea `true`; con `false`, omite las consultas y actualizaciones al grafo.
+Consulta y actualización condicional del grafo: usa Codebase Memory solo cuando `herramientas.codebase_memory` en `.agents/stack.yaml` sea `true`; con `false`, omite las consultas y actualizaciones al grafo. Resuelve `<proyecto>` con `python3 -I -B .agents/scripts/codebase-memory.py --resolver` (exit 0) antes de consultar. Un resultado vacío no demuestra ausencia: usa `check_index_coverage` y, si hay dudas, busca en la fuente. La actualización del grafo se hace con `python3 -I -B .agents/scripts/codebase-memory.py --indexar`; respeta la prohibición de reindexar desde aquí cuando figure en esta skill. `knowledge-base/` está excluida por `.cbmignore`.
 
 Ejemplos de clientes y pedidos: ejemplo con la convención recomendada; las convenciones efectivas se leen de `.agents/stack.yaml`.
 

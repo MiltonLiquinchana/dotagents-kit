@@ -7,7 +7,7 @@ Cargado solo cuando el orquestador determinó Ruta de Corrección. El Paso 0 ya 
 El workflow localiza los objetos afectados en este orden:
 1. Busca en `knowledge-base/` con `tgrep` el historial de correcciones y las notas del objeto. Si `tgrep` no responde, ejecuta `tgrep serve knowledge-base/` y vuelve a intentar; si sigue sin estar operativo, detén el flujo e informa al usuario.
 2. Consulta el esquema real mediante MCP en modo lectura (`SHOW CREATE` y `schema_<conexión>`). Si MCP no responde, detén el flujo e informa al usuario; no sustituyas la fuente real por el grafo ni infieras el esquema.
-3. Si `herramientas.graphify` es `true`, usa `GRAPHIFY_BACKEND=none graphify query` o `GRAPHIFY_BACKEND=none graphify path` como complemento, no como fuente de verdad del esquema; si es `false`, omite esas consultas.
+3. Si `herramientas.codebase_memory` es `true`, usa `codebase-memory-mcp cli search_graph --project "<proyecto>" --name-pattern ".*<símbolo>.*"` o `codebase-memory-mcp cli trace_path --project "<proyecto>" --function-name "<símbolo>"` como complemento, no como fuente de verdad del esquema; si es `false`, omite esas consultas.
 
 **Historial de correcciones (vinculante)**: busca `<objeto>-fixes.md` con `tgrep --files knowledge-base/ | grep -E "/<objeto>-fixes\\.md$"` (ver `.agents/rules/tgrep.md`). Si existe, trátalo como restricción dura del Plan de Corrección: no propongas un enfoque ya registrado como fallido sin explicar por qué la condición cambió.
 
@@ -182,8 +182,16 @@ La lista de rutas es la unión de `## Archivos tocados` de todas las salidas del
 ## C8.5 — Actualizar el grafo
 
 El workflow ejecuta:
+Solo si `herramientas.codebase_memory` es `true`, ejecuta `python3 -I -B .agents/scripts/codebase-memory.py --indexar`; con `false`, registra el paso como omitido en `manifest.md`.
+
 ```bash
-Solo si `herramientas.graphify` es `true`, ejecuta `GRAPHIFY_BACKEND=none graphify . --update`; con `false`, registra el paso como omitido en `manifest.md`.
+if [ "$(python3 -B -E .agents/scripts/stack.py get herramientas.codebase_memory)" = true ]; then
+  python3 -I -B .agents/scripts/codebase-memory.py --indexar > "$RUN_DIR/graph-status.md" 2>&1
+else
+  printf '%s\n' 'OMITIDO: herramientas.codebase_memory=false' > "$RUN_DIR/graph-status.md"
+fi
 ```
 
 Antes de aprobar o enmendar el plan, aplica `.agents/workflows/references/decisiones-stack.md`; incluye el registro entre los archivos aprobados si cambia.
+
+Solo con `herramientas.codebase_memory: true`, resuelve `<proyecto>` con `python3 -I -B .agents/scripts/codebase-memory.py --resolver` (exit 0) antes de las consultas. Un resultado vacío requiere comprobar cobertura con `check_index_coverage` y, si hay duda, buscar en fuente.

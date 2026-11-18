@@ -49,7 +49,7 @@ Si falta un artefacto obligatorio para el modo activo, no trabajes: escribe la s
    - Confirma que el frontmatter de cada nota en `knowledge-report.md` declara `fichero:` con la ruta real del notebook que contiene el objeto, y que ese notebook existe en disco.
    - Confirma que `grep -F "<entidad_principal>" <notebook>` lo encuentra.
    - Si no existe el notebook o el objeto en él, marca `estado_vinculacion: pendiente` y repórtalo para resolución.
-   - **graphify no participa en esta verificación**: su grafo excluye `knowledge-base/` y no cubre notebooks.
+   - **Codebase Memory no participa en esta verificación**: su grafo excluye `knowledge-base/` y no cubre notebooks.
    - Si falla la escritura de alguna nota, emite `estado: fallo` con la causa.
 
 ## Plantillas
@@ -58,7 +58,7 @@ Ver `references/templates.md`. Cárgalo solo cuando vayas a crear o actualizar u
 
 ## Reglas
 
-- Aplica `.agents/rules/architecture-rules.md`, `.agents/rules/project.md`, `.agents/rules/knowledge-base.md` y `.agents/rules/graphify.md`.
+- Aplica `.agents/rules/architecture-rules.md`, `.agents/rules/project.md`, `.agents/rules/knowledge-base.md` y `.agents/rules/codebase-memory.md`.
 - No sobreescribe notas existentes por completo — edición incremental por sección.
 - No genera notas para objetos de configuración sensible salvo petición explícita del usuario.
 - Si la escritura de la nota falla, emite `estado: fallo` con la causa.
@@ -96,6 +96,6 @@ fecha: <ISO-8601>
 La nota 1:1 de Plantilla de Análisis se crea solo para archivos con lógica. DTOs, interfaces puras, constantes y clases de error triviales no necesitan nota propia. En modo `verificar`, no marques su ausencia como fallo. Mantén la convención de rutas actual para permitir búsquedas de `-fixes.md` por ruta.
 
 
-Consulta y actualización condicional del grafo: usa graphify solo cuando `herramientas.graphify` en `.agents/stack.yaml` sea `true`; con `false`, omite las consultas y actualizaciones al grafo.
+Consulta y actualización condicional del grafo: usa Codebase Memory solo cuando `herramientas.codebase_memory` en `.agents/stack.yaml` sea `true`; con `false`, omite las consultas y actualizaciones al grafo. Resuelve `<proyecto>` con `python3 -I -B .agents/scripts/codebase-memory.py --resolver` (exit 0) antes de consultar. Un resultado vacío no demuestra ausencia: usa `check_index_coverage` y, si hay dudas, busca en la fuente. La actualización del grafo se hace con `python3 -I -B .agents/scripts/codebase-memory.py --indexar`; respeta la prohibición de reindexar desde aquí cuando figure en esta skill. `knowledge-base/` está excluida por `.cbmignore`.
 
 Ejemplos de clientes y pedidos: ejemplo con la convención recomendada; las convenciones efectivas se leen de `.agents/stack.yaml`.

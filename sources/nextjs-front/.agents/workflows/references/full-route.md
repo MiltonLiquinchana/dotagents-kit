@@ -144,7 +144,11 @@ Una skill por invocación según las capas requeridas:
 
 El workflow ejecuta:
 ```bash
-GRAPHIFY_BACKEND=none graphify . --update
+if [ "$(node .agents/scripts/stack.mjs get herramientas.codebase_memory)" = true ]; then
+  python3 -I -B .agents/scripts/codebase-memory.py --indexar > "$RUN_DIR/graph-status.md" 2>&1
+else
+  printf '%s\n' 'OMITIDO: herramientas.codebase_memory=false' > "$RUN_DIR/graph-status.md"
+fi
 ```
 Genera `RUN_DIR/graph-status.md` con el resultado. Si falla, se anota la advertencia en `graph-status.md` y el flujo continúa al Paso 8 sin detenerse.
 
@@ -189,7 +193,7 @@ Genera `RUN_DIR/graph-status.md` con el resultado. Si falla, se anota la adverte
     - Escribir `RUN_DIR/feedback.md` con los hallazgos y sugerencias de `review.md`.
     - Volver al Paso 6 (consume 1 iteración del ciclo de corrección).
   - `veredicto: CHANGES REQUIRED` con `tipo_rechazo: ARQUITECTURA`:
-    - Pausa de confirmación con el usuario. Si el usuario confirma: ejecutar limpieza git con las rutas de `## Archivos tocados`, mover contenido de `RUN_DIR` a `history/attempt-<n>/`, ejecutar `GRAPHIFY_BACKEND=none graphify . --update` y reiniciar desde el Paso 1 (consume 1 de los 2 reinicios permitidos).
+    - Pausa de confirmación con el usuario. Si el usuario confirma: ejecutar limpieza git con las rutas de `## Archivos tocados`, mover contenido de `RUN_DIR` a `history/attempt-<n>/`, ejecutar `python3 -I -B .agents/scripts/codebase-memory.py --indexar` y reiniciar desde el Paso 1 (consume 1 de los 2 reinicios permitidos).
   - `veredicto: BLOCKED (infraestructura)` → detener e informar al usuario sin consumir iteraciones.
 
 ## Paso 11 — Actualizar Base de Conocimiento

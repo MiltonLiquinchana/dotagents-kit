@@ -25,7 +25,7 @@ Recibes `OUT_DIR` (carpeta donde escribes tu salida) y las rutas de estos archiv
 **Modo**: si recibes `approved-plan.md` y `diff.patch` → modo `escribir`. Si recibes solo `knowledge-report.md` → modo `verificar`.
 
 **Invocación a demanda (modo `escribir` simplificado)**: si recibes solo `request.md` con la ruta del fichero a documentar, documenta ese fichero único en modo `escribir`.
-Si no recibiste Plan ni diff y tampoco hay contexto previo de ese fichero en la conversación, ejecuta `graphify query "<fichero>"` o `graphify explain "<fichero>"` (según `.agents/rules/graphify.md`) como primera tarea. Lee el fichero directamente solo si el grafo no existe o no responde.
+Si no recibiste Plan ni diff y tampoco hay contexto previo de ese fichero en la conversación, solo con `herramientas.codebase_memory: true` ejecuta `codebase-memory-mcp cli search_graph --project "<proyecto>" --name-pattern ".*<símbolo>.*"` o `codebase-memory-mcp cli get_file_outline --project "<proyecto>" --file-path "<fichero>"` (según `.agents/rules/codebase-memory.md`) como primera tarea. Lee el fichero directamente solo si el grafo no existe o no responde.
 
 Trabaja solo con estos archivos y con el código del proyecto. No asumas contexto fuera de ellos.
 Si falta un artefacto obligatorio para el modo activo, no trabajes: escribe la salida con `estado: bloqueado` y la causa.
@@ -63,7 +63,7 @@ Solo los ficheros de `src/main/java/` con lógica reciben o actualizan una nota 
    - Si existe, fija `estado_vinculacion: vinculada` en el frontmatter (si el campo falta en una nota preexistente, añádelo).
    - Si no existe (ruta movida, typo, archivo borrado), marca `estado_vinculacion: pendiente` y repórtalo para resolución.
    - La sección `## Fichero fuente` es opcional, solo un recordatorio visual — no bloquees por su ausencia.
-   - **graphify no participa en esta verificación**: su grafo excluye `knowledge-base/` por diseño.
+   - **Codebase Memory no participa en esta verificación**: su grafo excluye `knowledge-base/` por diseño.
    - Si falla la escritura de alguna nota, emite `estado: fallo` con la causa.
 
 ## Plantillas
@@ -74,7 +74,7 @@ La convención de ruta para los archivos de knowledge-base refleja la ruta relat
 
 ## Reglas
 
-- Aplica `.agents/rules/architecture-rules.md`, `.agents/rules/project.md`, `.agents/rules/knowledge-base.md` y `.agents/rules/graphify.md`.
+- Aplica `.agents/rules/architecture-rules.md`, `.agents/rules/project.md`, `.agents/rules/knowledge-base.md` y `.agents/rules/codebase-memory.md`.
 - Esta skill no mantiene mapas ni índices globales.
 - No sobreescribe notas existentes por completo — edición incremental por sección.
 - No genera notas para ficheros de configuración sensibles (`application*.yml`/`application*.yaml`, secretos) salvo petición explícita del usuario.
@@ -113,4 +113,4 @@ fecha: <ISO-8601>
 La nota 1:1 de Plantilla de Análisis se crea solo para archivos con lógica. DTOs, interfaces puras, constantes y clases de error triviales no necesitan nota propia. En modo `verificar`, no marques su ausencia como fallo. Mantén la convención de rutas actual para permitir búsquedas de `-fixes.md` por ruta.
 
 
-Consulta y actualización condicional del grafo: usa graphify solo cuando `herramientas.graphify` en `.agents/stack.yaml` sea `true`; con `false`, omite las consultas y actualizaciones al grafo.
+Consulta y actualización condicional del grafo: usa Codebase Memory solo cuando `herramientas.codebase_memory` en `.agents/stack.yaml` sea `true`; con `false`, omite las consultas y actualizaciones al grafo. Resuelve `<proyecto>` con `python3 -I -B .agents/scripts/codebase-memory.py --resolver` (exit 0) antes de consultar. Un resultado vacío no demuestra ausencia: usa `check_index_coverage` y, si hay dudas, busca en la fuente. La actualización del grafo se hace con `python3 -I -B .agents/scripts/codebase-memory.py --indexar`; respeta la prohibición de reindexar desde aquí cuando figure en esta skill. `knowledge-base/` está excluida por `.cbmignore`.

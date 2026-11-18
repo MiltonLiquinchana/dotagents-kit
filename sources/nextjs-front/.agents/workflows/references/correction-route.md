@@ -6,7 +6,7 @@ Cargado solo cuando el orquestador determinó Ruta de Corrección. El Paso 0 ya 
 
 Antes de implementar, comprueba el núcleo compartido en `utils/`. Si falta, propone ejecutar `.agents/workflows/bootstrap-project.md` y espera la respuesta del usuario; no escribas un núcleo propio.
 
-El workflow ejecuta `GRAPHIFY_BACKEND=none graphify query` o `GRAPHIFY_BACKEND=none graphify path` antes de tocar archivos, y verifica historial de correcciones en `knowledge-base/` con `tgrep`.
+El workflow ejecuta `codebase-memory-mcp cli search_graph --project "<proyecto>" --name-pattern ".*<símbolo>.*"` o `codebase-memory-mcp cli trace_path --project "<proyecto>" --function-name "<símbolo>"` antes de tocar archivos, y verifica historial de correcciones en `knowledge-base/` con `tgrep`.
 
 ## C2 — Plan de Corrección y esperar aprobación
 
@@ -81,7 +81,11 @@ ESPERANDO APROBACIÓN — Responde "aprobado" para continuar o indica los cambio
 
 El workflow ejecuta:
 ```bash
-GRAPHIFY_BACKEND=none graphify . --update
+if [ "$(node .agents/scripts/stack.mjs get herramientas.codebase_memory)" = true ]; then
+  python3 -I -B .agents/scripts/codebase-memory.py --indexar > "$RUN_DIR/graph-status.md" 2>&1
+else
+  printf '%s\n' 'OMITIDO: herramientas.codebase_memory=false' > "$RUN_DIR/graph-status.md"
+fi
 ```
 Genera `RUN_DIR/graph-status.md`. Si falla, avisa y continúa a C5.
 
@@ -114,7 +118,7 @@ Genera `RUN_DIR/graph-status.md`. Si falla, avisa y continúa a C5.
     - Escribir `RUN_DIR/feedback.md` con los hallazgos de `review.md`.
     - Volver a C3 (consume 1 iteración del ciclo de corrección).
   - `veredicto: CHANGES REQUIRED` con `tipo_rechazo: ARQUITECTURA`:
-    - Pausa de confirmación con el usuario antes de escalar a Ruta Completa. Si el usuario confirma: ejecutar limpieza git con las rutas de `## Archivos tocados`, mover `RUN_DIR` a `history/attempt-<n>/`, ejecutar `GRAPHIFY_BACKEND=none graphify . --update` e iniciar Ruta Completa desde el Paso 1 (consume 1 reinicio).
+    - Pausa de confirmación con el usuario antes de escalar a Ruta Completa. Si el usuario confirma: ejecutar limpieza git con las rutas de `## Archivos tocados`, mover `RUN_DIR` a `history/attempt-<n>/`, ejecutar `python3 -I -B .agents/scripts/codebase-memory.py --indexar` e iniciar Ruta Completa desde el Paso 1 (consume 1 reinicio).
   - `veredicto: BLOCKED (infraestructura)` → detener e informar al usuario sin consumir iteraciones.
 
 ## C7 — Actualizar Base de Conocimiento
@@ -166,3 +170,5 @@ git commit -m "fix: <descripcion-de-la-correccion>"
 La lista de rutas es la unión de `## Archivos tocados` de todas las salidas del intento aprobado y las notas listadas en `knowledge-report.md`. Incluye `package.json` y el lockfile del gestor si se instalaron dependencias. Antes de añadir, compara `git status --porcelain` con esa lista; si queda cualquier archivo modificado o sin seguimiento fuera de ella, detente e informa al usuario sin añadirlo ni descartarlo. Si el commit falla, detén e informa al usuario con el error literal; no reintentes ni asumas que el working tree sigue igual que el aprobado.
 
 Antes de aprobar o enmendar el plan, aplica `.agents/workflows/references/decisiones-stack.md`; incluye el registro entre los archivos aprobados si cambia.
+
+Solo con `herramientas.codebase_memory: true`, resuelve `<proyecto>` con `python3 -I -B .agents/scripts/codebase-memory.py --resolver` (exit 0) antes de las consultas. Un resultado vacío requiere comprobar cobertura con `check_index_coverage` y, si hay duda, buscar en fuente.

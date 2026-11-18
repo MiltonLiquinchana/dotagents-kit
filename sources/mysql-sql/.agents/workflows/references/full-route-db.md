@@ -210,11 +210,17 @@ git commit -m "feat: <descripcion-de-la-feature>"
 ```
 La lista de rutas es la unión de `## Archivos tocados` de todas las salidas del intento aprobado y las notas listadas en `knowledge-report.md`. Antes de añadir, compara `git status --porcelain` con esa lista; si queda cualquier archivo modificado o sin seguimiento fuera de ella, detente e informa al usuario sin añadirlo ni descartarlo. Si el commit falla, detén e informa al usuario.
 
-## Paso 10.5 — Actualizar el grafo (solo si herramientas.graphify es true)
+## Paso 10.5 — Actualizar el grafo (solo si herramientas.codebase_memory es true)
 
 El workflow ejecuta:
+Solo si `herramientas.codebase_memory` es `true`, ejecuta `python3 -I -B .agents/scripts/codebase-memory.py --indexar`; con `false`, registra el paso como omitido en `manifest.md`.
+
 ```bash
-Solo si `herramientas.graphify` es `true`, ejecuta `GRAPHIFY_BACKEND=none graphify . --update`; con `false`, registra el paso como omitido en `manifest.md`.
+if [ "$(python3 -B -E .agents/scripts/stack.py get herramientas.codebase_memory)" = true ]; then
+  python3 -I -B .agents/scripts/codebase-memory.py --indexar > "$RUN_DIR/graph-status.md" 2>&1
+else
+  printf '%s\n' 'OMITIDO: herramientas.codebase_memory=false' > "$RUN_DIR/graph-status.md"
+fi
 ```
 Genera `RUN_DIR/graph-status.md`.
 

@@ -148,8 +148,8 @@ python3 -I -B .agents/scripts/documentacion.py comprobar-existencia || exit 1
    En la comprobación posterior de coherencia, `devops-engineer` usa modo validar si
    el diff afecta configuración/artefactos DevOps; ya se generaron antes de las pruebas.
 <!-- fin -->
-9. `tech-writer` produce docs-summary.md; actualiza el grafo solo si herramientas.graphify
-   es true. Registra las salidas literales y estados en manifest. Cada fase ok avanza;
+9. `tech-writer` produce docs-summary.md; actualiza el grafo solo si herramientas.codebase_memory
+   es true, con `python3 -I -B .agents/scripts/codebase-memory.py --indexar`. Registra las salidas literales y estados en manifest. Cada fase ok avanza;
    fallo vuelve con feedback, máximo dos intentos por ciclo; agotamiento o dato ausente
    implica bloqueado. No declares éxito con comandos pendientes ni pruebas fallidas.
 10. Antes de declarar la entrega lista, ejecuta el **preflight completo**:

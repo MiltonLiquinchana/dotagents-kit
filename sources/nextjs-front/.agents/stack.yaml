@@ -27,7 +27,7 @@ integraciones:
   variables_autenticacion: [NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY, CLERK_SECRET_KEY, NEXT_PUBLIC_CLERK_SIGN_IN_URL, NEXT_PUBLIC_CLERK_SIGN_UP_URL]   # solo NOMBRES; se usan con autenticacion clerk, no con ninguna  # requerida_con: integraciones.autenticacion=clerk
 
 herramientas:
-  graphify: true                # false = este proyecto no usa grafo de código
+  codebase_memory: true  # false = este proyecto no usa el grafo de código
 
 git:
   rama_base: null               # null = HEAD; o referencia de rama para comparar

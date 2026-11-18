@@ -26,14 +26,21 @@ if [ "$COMPROBAR" -eq 1 ]; then
   report() { echo "$1"; MISSING=1; }
   [ -d knowledge-base ] || report "falta knowledge-base/"
   if [ -d knowledge-base ] && [ -z "$(find knowledge-base -mindepth 1 -maxdepth 1 -print -quit)" ] && [ ! -f knowledge-base/.gitkeep ]; then report "falta knowledge-base/.gitkeep"; fi
-  for line in '.agent-runs/' 'graphify-out/' 'logs/' 'knowledge-base/.tgrep/' '__pycache__/'; do grep -Fqx -- "$line" .gitignore 2>/dev/null || report "falta línea en .gitignore: $line"; done
-  if [ ! -f .graphifyignore ]; then
-    report "falta .graphifyignore"
+  for line in '.agent-runs/' 'logs/' 'knowledge-base/.tgrep/' '__pycache__/'; do grep -Fqx -- "$line" .gitignore 2>/dev/null || report "falta línea en .gitignore: $line"; done
+  if [ ! -f .cbmignore ]; then
+    report "falta .cbmignore"
   fi
-  if [ ! -f .agents/config/graphifyignore ]; then
-    report "falta .agents/config/graphifyignore"
-  elif [ -f .graphifyignore ]; then
-    while IFS= read -r line || [ -n "$line" ]; do case "$line" in ''|\#*) continue ;; esac; grep -Fqx -- "$line" .graphifyignore 2>/dev/null || report "falta línea en .graphifyignore: $line"; done < .agents/config/graphifyignore
+  if [ ! -f .agents/config/cbmignore ]; then
+    report "falta .agents/config/cbmignore"
+  else
+    while IFS= read -r line || [ -n "$line" ]; do case "$line" in ''|\#*) continue ;; esac; grep -Fqx -- "$line" .cbmignore 2>/dev/null || report "falta línea en .cbmignore: $line"; done < .agents/config/cbmignore
+  fi
+  # Migra las exclusiones propias sin borrar el archivo antiguo.
+  if [ -f .graphifyignore ]; then
+    while IFS= read -r line || [ -n "$line" ]; do
+      case "$line" in ''|\#*|'graphify-out/') continue ;; esac
+      grep -Fqx -- "$line" .cbmignore 2>/dev/null || report "falta línea en .cbmignore: $line"
+    done < .graphifyignore
   fi
   if [ "$MISSING" -eq 0 ]; then echo "OK: preparación completa"; exit 0; else echo "preparación incompleta"; exit 1; fi
 fi
@@ -42,11 +49,17 @@ if [ ! -d knowledge-base ]; then mkdir -p knowledge-base; : > knowledge-base/.gi
 elif [ -z "$(find knowledge-base -mindepth 1 -maxdepth 1 -print -quit)" ]; then
   if [ ! -f knowledge-base/.gitkeep ]; then : > knowledge-base/.gitkeep; echo "creado knowledge-base/.gitkeep"; CHANGED=1; fi
 fi
-for line in '.agent-runs/' 'graphify-out/' 'logs/' 'knowledge-base/.tgrep/' '__pycache__/'; do ensure_line .gitignore "$line"; done
-IGNORE='.agents/config/graphifyignore'
-[ -f "$IGNORE" ] || { echo "BLOCKED: falta .agents/config/graphifyignore" >&2; exit 2; }
-[ -f .graphifyignore ] || : > .graphifyignore
-while IFS= read -r line || [ -n "$line" ]; do case "$line" in ''|\#*) continue ;; esac; ensure_line .graphifyignore "$line"; done < "$IGNORE"
+for line in '.agent-runs/' 'logs/' 'knowledge-base/.tgrep/' '__pycache__/'; do ensure_line .gitignore "$line"; done
+IGNORE='.agents/config/cbmignore'
+[ -f "$IGNORE" ] || { echo "BLOCKED: falta .agents/config/cbmignore" >&2; exit 2; }
+[ -f .cbmignore ] || : > .cbmignore
+while IFS= read -r line || [ -n "$line" ]; do case "$line" in ''|\#*) continue ;; esac; ensure_line .cbmignore "$line"; done < "$IGNORE"
+if [ -f .graphifyignore ]; then
+  while IFS= read -r line || [ -n "$line" ]; do
+    case "$line" in ''|\#*|'graphify-out/') continue ;; esac
+    ensure_line .cbmignore "$line"
+  done < .graphifyignore
+fi
 if [ "$ARRANCAR_TGREP" -eq 1 ]; then
   command -v tgrep >/dev/null 2>&1 || { echo 'BLOCKED: CLI tgrep no encontrada.' >&2; exit 2; }
   mkdir -p logs

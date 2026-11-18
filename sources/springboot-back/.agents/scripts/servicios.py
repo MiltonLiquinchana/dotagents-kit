@@ -56,7 +56,7 @@ import re
 import sys
 from pathlib import Path
 
-EXCLUIDAS = {"build", "bin", "gradle", "logs", "knowledge-base", "graphify-out", "devops"}
+EXCLUIDAS = {"build", "bin", "gradle", "logs", "knowledge-base", "devops"}
 
 RE_GROUP = re.compile(r"^\s*group\s*=?\s*'([^']*)'|^\s*group\s*=?\s*\"([^\"]*)\"")
 RE_PORT = re.compile(r"^(\s+)port:\s*([0-9]+)\s*(?:#.*)?$")

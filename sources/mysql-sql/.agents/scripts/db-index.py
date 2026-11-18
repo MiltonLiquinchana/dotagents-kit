@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """db-index.py - Índice determinista de objetos SQL y sus dependencias (sustituto del grafo de código).
 
-Los repos de código consultan el grafo (`graphify query`) antes de abrir ficheros. Aquí el equivalente es
+Los repos de código consultan el grafo (`codebase-memory-mcp cli search_graph`) antes de abrir ficheros. Aquí el equivalente es
 este índice, calculado SOLO a partir de los notebooks .dbcnb (sin conectarse a ninguna base de datos).
 
 Uso:

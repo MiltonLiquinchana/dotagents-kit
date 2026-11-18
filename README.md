@@ -22,6 +22,7 @@ Requisitos: Git, Python 3, `jq`, `tgrep`, Open Notebook con un proveedor de mode
 ejecutar comandos y escribir archivos; según el stack, Node.js, `curl`, SonarQube y su servidor MCP
 (back y front), JDK (back) y Java para el servidor MCP de SonarQube (back y front), PyYAML y
 Docker/Podman (SQL), y `db-mcp-server` para los pasos con la base real (SQL).
+Con `herramientas.codebase_memory: true` necesitas también la CLI [Codebase Memory](https://github.com/DeusData/codebase-memory-mcp); el índice es local y cada máquina lo crea una vez.
 Consulta la [tabla de requisitos](manual-usuario.md#requisitos).
 
 1. Clona este repositorio con `git clone <url>`; en la documentación esa ruta se llama `<KIT>`.
@@ -29,8 +30,8 @@ Consulta la [tabla de requisitos](manual-usuario.md#requisitos).
    `<KIT>/guia-ia-preparar-proyecto.md`. La guía propone lo que detecta, pide confirmar cada decisión
    y prepara `.agents/stack.yaml`; con tu confirmación, la IA ejecuta el generador.
 3. Sigue el orden de [Qué haces después de generar](manual-usuario.md#qué-haces-después-de-generar):
-   prepara el proyecto, revisa y haz el commit indicado, ajusta las versiones y, si `herramientas.graphify`
-   es `true`, pide `graphify` antes de `preparar-documentacion`: sin grafo, el cierre de
+   prepara el proyecto, revisa y haz el commit indicado, ajusta las versiones y, si `herramientas.codebase_memory`
+   es `true`, pide `codebase-memory` antes de `preparar-documentacion`: sin grafo, el cierre de
    `preparar-documentacion` bloquea. Después pide `preparar-documentacion`.
 4. Elige una tarea del [catálogo de tu stack](manual-usuario.md#2-trabajar-con-los-workflows) y pídesela a la IA.
 

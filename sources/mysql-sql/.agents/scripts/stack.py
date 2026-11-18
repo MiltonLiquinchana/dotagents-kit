@@ -66,7 +66,7 @@ REQUIRED = [
     "notebooks",
     "conexiones",
     "mcp.base_de_datos",
-    "herramientas.graphify", "git.rama_base",
+    "herramientas.codebase_memory", "git.rama_base",
 ]
 
 
@@ -219,6 +219,9 @@ def cargar():
 
 
 def validar_datos(data):
+    herramientas = data.get('herramientas')
+    if isinstance(herramientas, dict) and 'codebase_memory' not in herramientas and 'graphify' in herramientas:
+        herramientas['codebase_memory'] = herramientas['graphify']
     if "proyecto" not in data or not isinstance(data["proyecto"], dict) or "stack" not in data["proyecto"]:
         bloqueado("falta la clave 'proyecto.stack'")
     if data["proyecto"]["stack"] != STACK:
@@ -293,9 +296,11 @@ def get(clave):
     return valor
 
 
-def validar():
+def validar(avisar_retirada=False):
     data = cargar()
     validar_opciones(data)
+    if avisar_retirada and 'graphify' in data.get('herramientas', {}):
+        sys.stderr.write('aviso: herramientas.graphify está retirada; renómbrala a herramientas.codebase_memory en tu stack.yaml\n')
     return True
 
 
@@ -382,7 +387,7 @@ def main(argv):
             "Códigos de salida: 0 = OK, 2 = BLOCKED (infraestructura).\n")
         return 0
     if argv[0] == "validate":
-        validar()
+        validar(avisar_retirada=True)
         sys.stdout.write(f"OK: .agents/stack.yaml es válido para el stack '{STACK}'.\n")
         return 0
     if argv[0] in ('regenerar', 'registro-datos') and len(argv) == 1:

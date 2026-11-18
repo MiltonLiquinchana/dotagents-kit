@@ -37,7 +37,7 @@ EXPECTED_STACK = {
 }
 
 DOCUMENTACION = ["documentacion." + k for k in ("url_api", "variable_password", "modelo_chat", "modelo_contexto_grande", "modelo_transformacion", "timeout_chat")]
-COMMON = DOCUMENTACION + ["version_esquema", "proyecto.nombre", "proyecto.stack", "herramientas.graphify", "git.rama_base"]
+COMMON = DOCUMENTACION + ["version_esquema", "proyecto.nombre", "proyecto.stack", "herramientas.codebase_memory", "git.rama_base"]
 REQUIRED = {
     "nextjs": COMMON + [
         "frontend.framework", "frontend.version", "frontend.gestor_paquetes", "frontend.eslint_config",

@@ -192,7 +192,11 @@ La lista completa del plan se compara antes de pruebas, gate y revisión. El dif
 
 El workflow ejecuta:
 ```bash
-GRAPHIFY_BACKEND=none graphify . --update
+if [ "$(node .agents/scripts/stack.mjs get herramientas.codebase_memory)" = true ]; then
+  python3 -I -B .agents/scripts/codebase-memory.py --indexar > "$RUN_DIR/graph-status.md" 2>&1
+else
+  printf '%s\n' 'OMITIDO: herramientas.codebase_memory=false' > "$RUN_DIR/graph-status.md"
+fi
 ```
 Genera `RUN_DIR/graph-status.md`. Si falla, avisa en el output y avanza al Paso 2d.
 
@@ -241,7 +245,7 @@ Genera `RUN_DIR/graph-status.md`. Si falla, avisa en el output y avanza al Paso 
     - Escribir `RUN_DIR/feedback.md` con los hallazgos de `review.md`.
     - Volver al Paso 2b (consume 1 iteración del ciclo de corrección).
   - `veredicto: CHANGES REQUIRED` con `tipo_rechazo: ARQUITECTURA`:
-    - Pausa de confirmación con el usuario antes de reiniciar desde el Paso 1a. Si el usuario confirma: ejecutar limpieza git con las rutas de `## Archivos tocados`, mover `RUN_DIR` a `history/attempt-<n>/`, ejecutar `GRAPHIFY_BACKEND=none graphify . --update` e iniciar desde el Paso 1a (consume 1 reinicio).
+    - Pausa de confirmación con el usuario antes de reiniciar desde el Paso 1a. Si el usuario confirma: ejecutar limpieza git con las rutas de `## Archivos tocados`, mover `RUN_DIR` a `history/attempt-<n>/`, ejecutar `python3 -I -B .agents/scripts/codebase-memory.py --indexar` e iniciar desde el Paso 1a (consume 1 reinicio).
   - `veredicto: BLOCKED (infraestructura)` → detener e informar al usuario sin consumir iteraciones.
 
 <!-- si devops.infraestructura=jenkins-kubernetes -->
@@ -305,7 +309,7 @@ git status --porcelain
 git add -- <rutas explícitas>
 git commit -m "feat: <descripcion-de-la-feature>"
 ```
-La lista de rutas es la unión de `## Archivos tocados` de todas las salidas del intento aprobado y las notas listadas en `knowledge-report.md`. Antes de añadir, compara `git status --porcelain` con esa lista; si queda cualquier archivo modificado o sin seguimiento fuera de ella, detente e informa al usuario sin añadirlo ni descartarlo. Inmediatamente tras el commit, invoca `GRAPHIFY_BACKEND=none graphify . --update` como red de seguridad post-commit.
+La lista de rutas es la unión de `## Archivos tocados` de todas las salidas del intento aprobado y las notas listadas en `knowledge-report.md`. Antes de añadir, compara `git status --porcelain` con esa lista; si queda cualquier archivo modificado o sin seguimiento fuera de ella, detente e informa al usuario sin añadirlo ni descartarlo. Inmediatamente tras el commit, invoca `python3 -I -B .agents/scripts/codebase-memory.py --indexar` como red de seguridad post-commit.
 
 Antes de aprobar o enmendar el plan, aplica `.agents/workflows/references/decisiones-stack.md`; incluye el registro entre los archivos aprobados si cambia.
 

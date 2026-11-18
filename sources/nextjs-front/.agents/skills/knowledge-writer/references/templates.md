@@ -30,7 +30,7 @@ actualizado: <YYYY-MM-DD>
 - ...
 
 ## Dependencias y relaciones
-(Vía Graphify — enlaza con [[OtroFichero]] cuando exista nota relacionada)
+(Vía tgrep sobre knowledge-base/ — enlaza con [[OtroFichero]] cuando exista nota relacionada)
 
 ## Decisiones de diseño
 - Decisión: ... — Razón: ...

@@ -1,6 +1,6 @@
 ---
 name: code-reviewer
-description: Auditoría de calidad, seguridad y arquitectura en microservicios Spring Boot, usando el Grafo de Conocimiento (Graphify) para validar dependencias y capas.
+description: Auditoría de calidad, seguridad y arquitectura en microservicios Spring Boot, usando el Grafo de Conocimiento (Codebase Memory) para validar dependencias y capas.
 ---
 
 # Senior Code Reviewer (Java)
@@ -18,7 +18,7 @@ Recibes `OUT_DIR` (carpeta donde escribes tu salida) y las rutas de estos archiv
 | `write-report.md` | sí | Archivos escritos + resultado de compilación. |
 | `test-report.md` | no | Resultado de pruebas. |
 | `docs-summary.md` | no | Documentación generada. |
-| `graph-status.md` | no | Resultado de `GRAPHIFY_BACKEND=none graphify . --update` y avisos de grafo desactualizado. |
+| `graph-status.md` | no | Resultado de `python3 -I -B .agents/scripts/codebase-memory.py --indexar` y avisos de grafo desactualizado. |
 | `feedback.md` | no | Correcciones pedidas sobre un intento anterior tuyo. Si existe, corrige solo lo que indica. |
 
 Trabaja solo con estos archivos y con el código del proyecto. No asumas contexto fuera de ellos.
@@ -32,12 +32,12 @@ Si falta un artefacto obligatorio, no trabajes: escribe la salida con `estado: b
 1. **Tarea 1 — Arquitectura**: Valida que el patrón (Capas Estrictas) se aplica consistentemente.
 <!-- fin -->
 <!-- si backend.persistencia=jpa -->
-   - Revisa `graphify-out/GRAPH_REPORT.md`, si existe, en busca de "surprising connections" que involucren los archivos nuevos/modificados. Una conexión `Controller` → `Repository` directa (sin `Service`) o exposición de una `@Entity` en un endpoint REST es **Bloqueante**.
+   - Consulta `codebase-memory-mcp cli detect_changes --project "<proyecto>" --scope impact`, `codebase-memory-mcp cli trace_path --project "<proyecto>" --function-name "<símbolo>" --direction inbound` y `codebase-memory-mcp cli get_architecture --project "<proyecto>" --aspects '["cycles"]'` sobre los archivos nuevos/modificados y confirma los saltos de capa en la fuente. Una conexión `Controller` → `Repository` directa (sin `Service`) o exposición de una `@Entity` en un endpoint REST es **Bloqueante**.
 <!-- si backend.persistencia=jdbc -->
-   - Revisa `graphify-out/GRAPH_REPORT.md`, si existe, en busca de "surprising connections" que involucren los archivos nuevos/modificados. Una conexión `Controller` → `Repository` directa (sin `Service`) es **Bloqueante**.
+   - Consulta `codebase-memory-mcp cli detect_changes --project "<proyecto>" --scope impact`, `codebase-memory-mcp cli trace_path --project "<proyecto>" --function-name "<símbolo>" --direction inbound` y `codebase-memory-mcp cli get_architecture --project "<proyecto>" --aspects '["cycles"]'` sobre los archivos nuevos/modificados y confirma los saltos de capa en la fuente. Una conexión `Controller` → `Repository` directa (sin `Service`) es **Bloqueante**.
 <!-- fin -->
-   - Usa `graphify query "qué importa <ArchivoX>"` para confirmar dependencias sospechosas.
-   - Si `graph-status.md` avisa grafo desactualizado, un `graphify query` vacío no cuenta como "sin dependencias".
+   - Usa `codebase-memory-mcp cli trace_path --project "<proyecto>" --function-name "<símbolo>" --direction inbound` para confirmar dependencias sospechosas.
+   - Si `graph-status.md` avisa grafo desactualizado, un `codebase-memory-mcp cli search_graph --project "<proyecto>" --name-pattern ".*<símbolo>.*"` vacío no cuenta como "sin dependencias".
 <!-- si backend.persistencia=jpa -->
 2. **Tarea 2 — Performance**: Detecta N+1, `FetchType.EAGER` sin justificación, queries sin límite, ausencia de `@Transactional(readOnly = true)` en lecturas.
 <!-- fin -->
@@ -57,7 +57,7 @@ Si falta un artefacto obligatorio, no trabajes: escribe la salida con `estado: b
 7. **Tarea 7 — Código moderno**: Valida uso de `record` y pattern matching, e inyección por constructor explícito con campos `private final` (sin Lombok). Rechaza `@Autowired` en campos.
 <!-- fin -->
    Marca además como hallazgo cualquier patrón antiguo para el que la versión del proyecto (`backend.java`, `backend.spring_boot`, y las librerías de los `build.gradle`) ofrece una alternativa mejor según la regla de versiones de `.agents/rules/architecture-rules.md`; el código existente solo se reescribe en un plan aprobado. Comprueba también que cada bloque de código del plan aprobado lleva su línea «Capacidades de la versión usadas» y que es coherente con el código: si falta, contradice el código o menciona una capacidad que la versión no tiene, es hallazgo (el texto genérico de la línea lo define la regla; su contenido concreto se lee del plan).
-8. **Tarea 8 — Duplicación**: Detecta lógica duplicada con otros microservicios vía `graphify query`.
+8. **Tarea 8 — Duplicación**: Como observación orientativa, nunca bloqueo, busca candidatos a lógica duplicada o código muerto con otros microservicios vía `codebase-memory-mcp cli search_graph --project "<proyecto>" --name-pattern ".*<símbolo>.*"`.
 9. **Tarea 9 — SonarQube Gate**: La regla de bloqueo y el formato de reporte están en `references/sonarqube-gate.md` (fuente única de verdad). Si hay discrepancia, `references/sonarqube-gate.md` prevalece.
    - Se ejecuta con `node .agents/scripts/sonar-diff-gate.mjs --explain --recibo OUT_DIR/gate-recibo.json` (código `0` = PASA, `1` = BLOQUEA, `2` = `BLOCKED (infraestructura)`); declara en el informe que usaste el script. Si el script no puede ejecutarse, el veredicto es `BLOCKED (infraestructura)`: la vía manual por MCP sin script no permite aprobar.
    - Es un **análisis diferencial por fichero**: lista los `.java` tocados con `bash .agents/scripts/touched-files.sh`, analiza con `analyze_code_snippet` (siempre `fileContent`; no existe `filePath`) la versión base y la del working tree con el mismo `projectKey` y `scope`, y bloquea ante **cualquier issue nuevo**, de cualquier severidad, en `MAIN` y en `TEST`. El algoritmo completo, la lista de exclusión (`java:S1598`), la caché y la resolución de `projectKey` están en `references/sonarqube-gate.md`.
@@ -73,7 +73,7 @@ Si falta un artefacto obligatorio, no trabajes: escribe la salida con `estado: b
 <!-- si backend.persistencia=jpa -->
 - **Exposición de entidades**: Devolver `@Entity` en respuestas JSON.
 <!-- fin -->
-- **Acoplamiento no documentado**: "Surprising connection" en `GRAPH_REPORT.md` (si existe) sin justificación en el Plan.
+- **Acoplamiento no documentado**: dependencia detectada con `codebase-memory-mcp cli trace_path --project "<proyecto>" --function-name "<símbolo>" --direction inbound` y confirmada en la fuente sin justificación en el Plan.
 - **Duplicación**: Componente nuevo con similitud alta a uno existente.
 - **Valor de respaldo en credencial**: Un `${...:...}` con respaldo no vacío en una variable de credencial (claves que terminan en `password`, `passwd`, `username`, `secret`, `token`, `key`) dentro del diff es **Bloqueante** (`Tipo: implementación`); la corrección es quitar el respaldo y dejar `${VARIABLE}`.
 - **Ruta existente retirada, ocultada o renombrada con consumidores sin declarar**: solo cuando el diff oculte una ruta (`@RestResource(exported = false)`), elimine o renombre un `@GetMapping`/`@PostMapping`/… o cambie un `path` de `@RestResource`, busca el path en el frontend hermano y en el gateway (ambos declarados en `.agents/rules/project.md`). Si hay un consumidor y el Plan no declara el cambio de contrato con confirmación del usuario, es **Bloqueante** (`Tipo: arquitectura`).
@@ -85,7 +85,7 @@ Si falta un artefacto obligatorio, no trabajes: escribe la salida con `estado: b
 - `BLOCKED (infraestructura)` si ocurre cualquiera de estos casos: el servidor de SonarQube no está operativo para los scripts, el canario no detecta `java:S2077` o `bash .agents/scripts/touched-files.sh` termina con código 2. No son hallazgos de código: informa el motivo y detén el análisis.
 - No inventes errores. Basa cada hallazgo en evidencia verificable: grafo, SonarQube, reglas explícitas.
 - Sugiere alternativas arquitectónicas concretas si se rechaza código.
-- No generes ni actualices `graphify-out/graph.json`.
+- No reindexes (`python3 -I -B .agents/scripts/codebase-memory.py --indexar`) desde aquí.
 
 ## Salida
 
@@ -132,4 +132,4 @@ Tipo: implementación | arquitectura
 ```
 
 
-Consulta y actualización condicional del grafo: usa graphify solo cuando `herramientas.graphify` en `.agents/stack.yaml` sea `true`; con `false`, omite las consultas y actualizaciones al grafo.
+Consulta y actualización condicional del grafo: usa Codebase Memory solo cuando `herramientas.codebase_memory` en `.agents/stack.yaml` sea `true`; con `false`, omite las consultas y actualizaciones al grafo. Resuelve `<proyecto>` con `python3 -I -B .agents/scripts/codebase-memory.py --resolver` (exit 0) antes de consultar. Un resultado vacío no demuestra ausencia: usa `check_index_coverage` y, si hay dudas, busca en la fuente.

@@ -1,6 +1,6 @@
 ---
 name: tech-writer
-description: Verifica el Javadoc, los comentarios WHY/NOTE y los READMEs del código implementado y aprobado. Los comentarios verificados son insumo directo del Grafo de Conocimiento (Graphify).
+description: Verifica el Javadoc, los comentarios WHY/NOTE y los READMEs del código implementado y aprobado. Los comentarios verificados son comentarios de código consultables.
 ---
 
 # Technical Writer Senior (Java)
@@ -22,14 +22,14 @@ Si falta un artefacto obligatorio, no trabajes: escribe la salida con `estado: b
 
 ## Tareas
 
-1. **Tarea 1 — Javadoc y comentarios**: Verifica en `diff.patch` que todo el código nuevo o modificado con API pública lleva su Javadoc con el "por qué" de las decisiones en constructores y métodos públicos de Controllers, Services y clases clave; comprueba que los puntos de decisión llevan `// WHY:` y las advertencias `// NOTE:`. Estos comentarios son los que indexa Graphify como nodos de "rationale".
+1. **Tarea 1 — Javadoc y comentarios**: Verifica en `diff.patch` que todo el código nuevo o modificado con API pública lleva su Javadoc con el "por qué" de las decisiones en constructores y métodos públicos de Controllers, Services y clases clave; comprueba que los puntos de decisión llevan `// WHY:` y las advertencias `// NOTE:`. Estos son comentarios de código consultables; verifica su contenido sin asumir un tipo de nodo del índice.
 2. **Tarea 2 — README**: Verifica que los READMEs de la feature traen guía de uso, endpoints expuestos y ejemplos de llamada (request/response), según lo que hay en el diff.
 3. **Tarea 3 — Naming**: Asegura que los nombres de clases, métodos y variables del código documentado son consistentes con el resto del monorepo.
 4. **Tarea 4 — Deuda técnica**: Si `approved-plan.md` declaró algo en "¿Genera o resuelve deuda técnica?", verifica en el diff que el `// WHY:` correspondiente esté en el punto exacto del código donde aplica. Si el Plan dice "Ninguna" pero detectas un atajo no declarado, repórtalo en la salida — no lo silencies.
 <!-- si backend.persistencia=jpa -->
-5. **Tarea 5 — Alineación con la Arquitectura**: La documentación verificada debe ser consistente con el patrón elegido (Data REST / Capas Estrictas / Híbrido). El flujo `Controller → Service → Repository` ya queda reflejado en el Grafo de Conocimiento vía `GRAPHIFY_BACKEND=none graphify . --update` — no necesitas mantener un mapa de flujo separado.
+5. **Tarea 5 — Alineación con la Arquitectura**: La documentación verificada debe ser consistente con el patrón elegido (Data REST / Capas Estrictas / Híbrido). El flujo `Controller → Service → Repository` ya queda reflejado en el Grafo de Conocimiento vía `python3 -I -B .agents/scripts/codebase-memory.py --indexar` — no necesitas mantener un mapa de flujo separado.
 <!-- si backend.persistencia=jdbc -->
-5. **Tarea 5 — Alineación con la Arquitectura**: La documentación verificada debe ser consistente con el patrón elegido (Capas Estrictas). El flujo `Controller → Service → Repository` ya queda reflejado en el Grafo de Conocimiento vía `GRAPHIFY_BACKEND=none graphify . --update` — no necesitas mantener un mapa de flujo separado.
+5. **Tarea 5 — Alineación con la Arquitectura**: La documentación verificada debe ser consistente con el patrón elegido (Capas Estrictas). El flujo `Controller → Service → Repository` ya queda reflejado en el Grafo de Conocimiento vía `python3 -I -B .agents/scripts/codebase-memory.py --indexar` — no necesitas mantener un mapa de flujo separado.
 <!-- fin -->
 
 ## Reglas
@@ -40,7 +40,7 @@ Si falta un artefacto obligatorio, no trabajes: escribe la salida con `estado: b
 - No uses comentarios obvios (`// suma dos números`). Enfócate en el "por qué".
 - No escribas la palabra "todo" (como pronombre o cuantificador) en comentarios ni Javadoc: SonarQube la trata como marcador `TODO` y emite `java:S1135` (sin distinguir mayúsculas), lo que bloquea el gate diferencial. Usa "cualquier", "cada", "el conjunto". Para deuda real usa `// WHY:` (ver "Deuda técnica").
 - No modifiques lógica de negocio ni escribas archivos del proyecto: esta skill solo escribe su `docs-summary.md`.
-- No generes ni actualices `graphify-out/graph.json`.
+- No reindexes (`python3 -I -B .agents/scripts/codebase-memory.py --indexar`) desde aquí.
 
 ## Salida
 
@@ -71,4 +71,4 @@ fecha: <ISO-8601>
 ```
 
 
-Consulta y actualización condicional del grafo: usa graphify solo cuando `herramientas.graphify` en `.agents/stack.yaml` sea `true`; con `false`, omite las consultas y actualizaciones al grafo.
+Consulta y actualización condicional del grafo: usa Codebase Memory solo cuando `herramientas.codebase_memory` en `.agents/stack.yaml` sea `true`; con `false`, omite las consultas y actualizaciones al grafo. Resuelve `<proyecto>` con `python3 -I -B .agents/scripts/codebase-memory.py --resolver` (exit 0) antes de consultar. Un resultado vacío no demuestra ausencia: usa `check_index_coverage` y, si hay dudas, busca en la fuente. La actualización del grafo se hace con `python3 -I -B .agents/scripts/codebase-memory.py --indexar`; respeta la prohibición de reindexar desde aquí cuando figure en esta skill. `knowledge-base/` está excluida por `.cbmignore`.

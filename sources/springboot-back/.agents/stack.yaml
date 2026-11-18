@@ -32,7 +32,7 @@ integraciones:
   variables_autenticacion: [CLERK_SECRET_KEY, CLERK_WEBHOOK_SIGNING_SECRET]   # solo NOMBRES de variables de entorno; nunca valores  # requerida_con: integraciones.autenticacion=clerk && integraciones.gestion_usuarios!=ninguna
 
 herramientas:
-  graphify: true                # false = este proyecto no usa grafo de código
+  codebase_memory: true  # false = este proyecto no usa el grafo de código
 
 git:
   rama_base: null               # referencia para comparar; en cierre de perfiles, null busca una base local disponible e incluye commits y árbol

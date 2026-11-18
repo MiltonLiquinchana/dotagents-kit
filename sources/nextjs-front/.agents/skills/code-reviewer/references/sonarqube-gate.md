@@ -39,8 +39,7 @@ La verificación de entorno determinista, la comprobación de existencia del pro
 ## Gate pre-commit (ficheros `.ts`/`.tsx`/`.mts`/`.cts` tocados)
 
 **Qué se analiza**: la lista de `bash .agents/scripts/touched-files.sh` (JSON; un elemento por
-`.ts`/`.tsx`/`.mts`/`.cts` tocado (los `.mts`/`.cts` se analizan como `ts`; p. ej. `vitest.config.mts`), excluidos `.d.ts`, `.agents/`, `knowledge-base/`, `node_modules/`, `.next/`
-y `graphify-out/`). La base es `HEAD`: el flujo exige árbol limpio al inicio y comitea una sola
+`.ts`/`.tsx`/`.mts`/`.cts` tocado (los `.mts`/`.cts` se analizan como `ts`; p. ej. `vitest.config.mts`), excluidos `.d.ts`, `.agents/`, `knowledge-base/`, `node_modules/`, `.next/`). La base es `HEAD`: el flujo exige árbol limpio al inicio y comitea una sola
 vez al final, así que `HEAD` es exactamente el estado previo a la feature. Detecta nuevos,
 modificados y renombrados aunque el usuario no haya hecho `git add`, y el propio script omite los
 ficheros cuyo contenido no cambió (cambios de solo modo y renombrados puros dentro del mismo

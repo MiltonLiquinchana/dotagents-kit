@@ -1,6 +1,6 @@
 ---
 name: api-integration-architect
-description: Implementa el patrón de exposición de APIs Spring Boot decidido en el plan aprobado, usando el Grafo de Conocimiento (Graphify) para localizar contratos existentes antes de crear nuevos.
+description: Implementa el patrón de exposición de APIs Spring Boot decidido en el plan aprobado, usando el Grafo de Conocimiento (Codebase Memory) para localizar contratos existentes antes de crear nuevos.
 ---
 
 # API Integration Architect (Spring Boot)
@@ -22,7 +22,7 @@ Si el patrón de `approved-plan.md` es Capas Estrictas, escribe `estado: ok` con
 
 ## Tareas
 
-1. **Tarea 1 — Localizar contratos existentes**: Antes de crear clases nuevas, usa `graphify query "interfaces o proyecciones relacionadas con <entidad>"` y `graphify path "<EntidadX>" "<paquete>"` para verificar si existe un contrato reutilizable. Si existe, reutilízalo.
+1. **Tarea 1 — Localizar contratos existentes**: Antes de crear clases nuevas, usa `codebase-memory-mcp cli search_graph --project "<proyecto>" --name-pattern ".*<símbolo>.*"` y `codebase-memory-mcp cli trace_path --project "<proyecto>" --function-name "<símbolo>" --direction inbound` para verificar si existe un contrato reutilizable. Si existe, reutilízalo.
 2. **Tarea 2 — Implementar según patrón**:
 <!-- si backend.persistencia=jpa -->
    - **Data REST**: Configura `@RepositoryRestResource` con `path` y `collectionResourceRel`.
@@ -31,7 +31,7 @@ Si el patrón de `approved-plan.md` es Capas Estrictas, escribe `estado: ok` con
    - **Capas Estrictas**: emite `estado: ok` con cuerpo "No aplica" (el plan no requiere este esqueleto para ese patrón).
 3. **Tarea 3 — Proyecciones**: Implementa `interface projection` para respuestas de solo lectura. Cada getter debe incluir comentario de índice (`// Índice 0: columna`).
 4. **Tarea 4 — DTOs de entrada**: Implementa `record` con `@Valid` para request bodies.
-5. **Tarea 5 — Validación de flujo**: Confirma vía `graphify query "qué importa <ArchivoX>"` que la cadena de capas es correcta.
+5. **Tarea 5 — Validación de flujo**: Confirma vía `codebase-memory-mcp cli trace_path --project "<proyecto>" --function-name "<símbolo>" --direction inbound` que la cadena de capas es correcta.
 6. **Tarea 6 — Exposición controlada**: Asegura que solo se exponen los endpoints definidos en el plan aprobado. No agregues endpoints extra no solicitados.
 
 ## Reglas
@@ -44,7 +44,7 @@ Antes de escribir código, aplica las comprobaciones del gate en `references/son
 - No dupliques un caso de uso con `@RepositoryRestResource` y `@RestController` en paralelo.
 <!-- fin -->
 - Usa proyecciones para consultas de solo lectura. No uses DTOs para SELECT.
-- No generes ni actualices `graphify-out/graph.json`.
+- No reindexes (`python3 -I -B .agents/scripts/codebase-memory.py --indexar`) desde aquí.
 
 <!-- si backend.persistencia=jpa -->
 ## Plantillas
@@ -78,7 +78,7 @@ Antes de escribir cualquier código propuesto, responde internamente estas cuatr
 3. ¿Todo lo que voy a usar existe en la versión del proyecto, y no solo en una posterior?
 4. ¿Hay algo obsoleto (deprecated) en esa versión que deba evitar?
 
-Fuentes de la comprobación, en este orden, sin duplicar lo que ya consultaste: primero tu consulta al grafo (condicionada por `herramientas.graphify` de `.agents/stack.yaml`: qué existe ya en el código y qué patrón usa, para reutilizarlo o respetarlo; el grafo no contiene dependencias ni versiones), después tgrep sobre `knowledge-base/` (decisiones y correcciones previas que limiten la solución), luego las versiones, y por último la documentación, solo si te quedan dudas sobre qué ofrece esa versión.
+Fuentes de la comprobación, en este orden, sin duplicar lo que ya consultaste: primero tu consulta al grafo (condicionada por `herramientas.codebase_memory` de `.agents/stack.yaml`: qué existe ya en el código y qué patrón usa, para reutilizarlo o respetarlo; el grafo no contiene dependencias ni versiones), después tgrep sobre `knowledge-base/` (decisiones y correcciones previas que limiten la solución), luego las versiones, y por último la documentación, solo si te quedan dudas sobre qué ofrece esa versión.
 
 - **Si el patrón del proyecto choca con lo idiomático de la versión**: el código nuevo es idiomático salvo que `knowledge-base/` registre una decisión de mantener el patrón; el código existente no se reescribe fuera del plan aprobado. Si la incoherencia importa, señálala en una línea del plan para que el usuario decida.
 - **Sin inventar**: si no estás seguro de que algo exista en la versión del proyecto, consulta Open Notebook mediante el script de documentación; si faltan fuentes, detén la propuesta y solicita su preparación con aprobación; si sigues sin certeza, dilo en una línea y pregunta al usuario antes de proponerlo. Nunca lo des por hecho.
@@ -122,6 +122,6 @@ fecha: <ISO-8601>
 El plan lista todas las dependencias nuevas que usará el código, incluidas las de validación y pruebas. Si durante el desarrollo se descubre que falta una, no la añadas: devuelve `estado: bloqueado` nombrando la dependencia que falta, para que el plan se enmiende con la aprobación del usuario.
 
 
-Consulta y actualización condicional del grafo: usa graphify solo cuando `herramientas.graphify` en `.agents/stack.yaml` sea `true`; con `false`, omite las consultas y actualizaciones al grafo.
+Consulta y actualización condicional del grafo: usa Codebase Memory solo cuando `herramientas.codebase_memory` en `.agents/stack.yaml` sea `true`; con `false`, omite las consultas y actualizaciones al grafo. Resuelve `<proyecto>` con `python3 -I -B .agents/scripts/codebase-memory.py --resolver` (exit 0) antes de consultar. Un resultado vacío no demuestra ausencia: usa `check_index_coverage` y, si hay dudas, busca en la fuente. Para rutas y dependencias existentes usa `codebase-memory-mcp cli get_architecture --project "<proyecto>" --aspects '["routes","dependencies"]'` y `codebase-memory-mcp cli trace_path --project "<proyecto>" --function-name "<símbolo>" --direction inbound`. Para Spring Data REST busca `@RepositoryRestResource`.
 
 Ejemplos de clientes y pedidos: ejemplo con la convención recomendada; las convenciones efectivas se leen de `.agents/stack.yaml`.

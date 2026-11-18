@@ -1,11 +1,11 @@
 ---
 name: context-analyzer
-description: Analiza el contexto técnico usando el grafo de código (Graphify) y el historial de conocimiento (tgrep sobre knowledge-base/).
+description: Analiza el contexto técnico usando el grafo de código (Codebase Memory) y el historial de conocimiento (tgrep sobre knowledge-base/).
 ---
 
 # Analizador de Contexto
 
-Rol: Mapea el contexto técnico del proyecto antes de construir o modificar funcionalidad. Usa `graphify-out/graph.json` (solo código) como fuente primaria de arquitectura, y `knowledge-base/` vía `tgrep` como fuente primaria de historial y decisiones previas. Son fuentes separadas — ver `.agents/rules/graphify.md` y `.agents/rules/tgrep.md`.
+Rol: Mapea el contexto técnico del proyecto antes de construir o modificar funcionalidad. Usa el índice de CBM (solo código) como fuente primaria de arquitectura, y `knowledge-base/` vía `tgrep` como fuente primaria de historial y decisiones previas. Son fuentes separadas — ver `.agents/rules/codebase-memory.md` y `.agents/rules/tgrep.md`.
 
 ## Entrada
 
@@ -23,10 +23,10 @@ Si falta un artefacto obligatorio, no trabajes: escribe la salida con `estado: b
 
 1. **Tarea 1 — Búsqueda literal previa (tgrep, primer paso, sin costo)**: extrae 2-4 términos clave de la feature/bug actual y búscalos en `knowledge-base/` antes de consultar el grafo (ver `.agents/rules/tgrep.md`).
 2. **Tarea 2 — Consulta al Grafo de código (fuente primaria de arquitectura)**:
-   - Usa `graphify query "..."` y `graphify path "A" "B"` para resolver relaciones entre capas existentes, flujo de datos y dependencias de código. No leas archivos completos ni listes directorios si el grafo puede responder.
-   - Consulta `graphify-out/GRAPH_REPORT.md`, si existe, para god nodes y surprising connections relevantes.
+   - Usa `codebase-memory-mcp cli search_graph --project "<proyecto>" --name-pattern ".*<símbolo>.*"` y `codebase-memory-mcp cli trace_path --project "<proyecto>" --function-name "<símbolo>" --direction inbound`; si la búsqueda por nombre no basta, complementa con `codebase-memory-mcp cli search_graph --project "<proyecto>" --semantic-query '["texto"]'` para resolver relaciones entre capas existentes, flujo de datos y dependencias de código. No leas archivos completos ni listes directorios si el grafo puede responder.
+   - Consulta `codebase-memory-mcp cli get_architecture --project "<proyecto>" --aspects '["hotspots","cycles"]'` y `codebase-memory-mcp cli detect_changes --project "<proyecto>" --scope impact` para el contexto relevante.
 3. **Tarea 3 — Verificación de stack, dependencias y configuración**: el stack, versiones de librerías y scripts se leen directamente de `package.json`, `tsconfig.json` y `tailwind.config.ts` (el grafo indexa AST de código, no resuelve dependencias de paquetes; ver `.agents/rules/project.md`). Confirmar capas base (`app/`, `controllers/`, `services/`, `repository/`, `domains/`).
-4. **Tarea 4 — Preparación para la feature**: confirma vía `graphify query` si ya existen controllers, services, repositories o componentes UI relacionados.
+4. **Tarea 4 — Preparación para la feature**: confirma vía `codebase-memory-mcp cli search_graph --project "<proyecto>" --name-pattern ".*<símbolo>.*"` si ya existen controllers, services, repositories o componentes UI relacionados.
 5. **Tarea 5 — Evaluación de riesgo de re-renders (si la feature involucra UI con estado)**:
    1. Identifica qué componentes comparten el mismo padre/página.
    2. ¿El estado propuesto viviría en el padre y provocaría re-renders de hermanos que no lo necesitan?
@@ -51,11 +51,11 @@ Si falta un artefacto obligatorio, no trabajes: escribe la salida con `estado: b
 
 ## Reglas
 
-- Aplica `.agents/rules/architecture-rules.md`, `.agents/rules/project.md`, `.agents/rules/graphify.md`, `.agents/rules/tgrep.md` y `.agents/rules/knowledge-base.md`.
+- Aplica `.agents/rules/architecture-rules.md`, `.agents/rules/project.md`, `.agents/rules/codebase-memory.md`, `.agents/rules/tgrep.md` y `.agents/rules/knowledge-base.md`.
 - **El grafo de código es la fuente primaria de arquitectura. Prohibido leer archivos individuales si el grafo puede responder.**
-- **`knowledge-base/` nunca se consulta vía graphify** — siempre vía `tgrep` (precondición bloqueante).
+- **`knowledge-base/` nunca se consulta vía Codebase Memory** — siempre vía `tgrep` (precondición bloqueante).
 - No asumas librerías, versiones ni patrones.
-- No generes ni actualices `graphify-out/graph.json`.
+- No reindexes (`python3 -I -B .agents/scripts/codebase-memory.py --indexar`) desde aquí.
 - Si `tgrep` no está disponible, termina con `estado: bloqueado` y la causa. Salvo en los estados que `.agents/rules/tgrep.md` define como válidos y que no son fallo: exit 1 sin coincidencias, el aviso `falling back to local index` con `Indexing: complete`, `Server: not running` con `knowledge-base/.tgrep/serve.json` existente y `knowledge-base` vacía (entonces registra "sin historial (`knowledge-base` vacío)").
 
 ## Salida
@@ -101,4 +101,4 @@ enfoques_descartados: []
 ```
 
 
-Consulta y actualización condicional del grafo: usa graphify solo cuando `herramientas.graphify` en `.agents/stack.yaml` sea `true`; con `false`, omite las consultas y actualizaciones al grafo.
+Consulta y actualización condicional del grafo: usa Codebase Memory solo cuando `herramientas.codebase_memory` en `.agents/stack.yaml` sea `true`; con `false`, omite las consultas y actualizaciones al grafo. Resuelve `<proyecto>` con `python3 -I -B .agents/scripts/codebase-memory.py --resolver` (exit 0) antes de consultar. Un resultado vacío no demuestra ausencia: usa `check_index_coverage` y, si hay dudas, busca en la fuente.

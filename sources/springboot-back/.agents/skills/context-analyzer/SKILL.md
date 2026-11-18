@@ -1,11 +1,11 @@
 ---
 name: context-analyzer
-description: Analiza el contexto técnico de microservicios Java/Spring Boot usando el Grafo de Conocimiento (Graphify).
+description: Analiza el contexto técnico de microservicios Java/Spring Boot usando el Grafo de Conocimiento (Codebase Memory).
 ---
 
 # Java Context Analyzer
 
-Rol: Mapea el contexto técnico del microservicio antes de construir o modificar funcionalidad. Usa `graphify-out/graph.json` como fuente primaria.
+Rol: Mapea el contexto técnico del microservicio antes de construir o modificar funcionalidad. Usa el índice de CBM como fuente primaria.
 
 ## Entrada
 
@@ -24,16 +24,16 @@ Si `tgrep` no está disponible, termina con `estado: bloqueado` y la causa. Salv
 
 1. **Tarea 1 — Búsqueda literal previa (tgrep, primer paso, sin costo)**: extrae 2-4 términos clave de la feature/bug actual y búscalos en `knowledge-base/` antes de consultar el grafo (ver `.agents/rules/tgrep.md`).
 2. **Tarea 2 — Consulta al Grafo (fuente primaria)**:
-   - Usa `graphify query "..."` y `graphify path "A" "B"` para resolver stack, capas existentes, y dependencias. No leas archivos completos ni listes directorios si el grafo puede responder.
-   - Consulta `graphify-out/GRAPH_REPORT.md`, si existe, para identificar god nodes y surprising connections relevantes a la feature.
-3. **Tarea 3 — Dependencias, versiones y JDK (no están en el grafo)**: lee directamente `<servicio>/build.gradle` (y su `settings.gradle` / `gradle.properties` si hace falta). El grafo contiene los `build.gradle` como nodos de tareas pero no sus dependencias ni versiones (ver `.agents/rules/graphify.md`).
+   - Usa `codebase-memory-mcp cli search_graph --project "<proyecto>" --name-pattern ".*<símbolo>.*"` y `codebase-memory-mcp cli trace_path --project "<proyecto>" --function-name "<símbolo>" --direction inbound`; si la búsqueda por nombre no basta, complementa con `codebase-memory-mcp cli search_graph --project "<proyecto>" --semantic-query '["texto"]'` para completar el contexto. Resuelve capas existentes y dependencias con los símbolos y las trazas. No leas archivos completos ni listes directorios si el grafo puede responder.
+   - Consulta `codebase-memory-mcp cli get_architecture --project "<proyecto>" --aspects '["hotspots","cycles"]'` y `codebase-memory-mcp cli detect_changes --project "<proyecto>" --scope impact` para el contexto relevante.
+3. **Tarea 3 — Dependencias, versiones y JDK (no están en el grafo)**: lee directamente `<servicio>/build.gradle` (y su `settings.gradle` / `gradle.properties` si hace falta). El índice no contiene las dependencias ni versiones de los `build.gradle` (ver `.agents/rules/codebase-memory.md`).
 4. **Tarea 4 — Verificación de archivos clave** (solo si el grafo no tiene la información):
    - `application*.yaml` — puertos, gateway. Nunca leas ni cites `application-feature.yaml` (contiene credenciales conocidas; ver `.agents/rules/project.md`).
    - Handler de excepciones global (`@RestControllerAdvice`).
 <!-- si backend.persistencia=jpa -->
-5. **Tarea 5 — Preparación para la feature**: Confirma vía `graphify query` si ya existen controllers, services, repositories o proyecciones relacionados. Detecta el patrón arquitectónico actual (Data REST, Capas Estrictas, Híbrido).
+5. **Tarea 5 — Preparación para la feature**: Confirma vía `codebase-memory-mcp cli search_graph --project "<proyecto>" --name-pattern ".*<símbolo>.*"` si ya existen controllers, services, repositories o proyecciones relacionados. Detecta el patrón arquitectónico actual (Data REST, Capas Estrictas, Híbrido).
 <!-- si backend.persistencia=jdbc -->
-5. **Tarea 5 — Preparación para la feature**: Confirma vía `graphify query` si ya existen controllers, services, repositories o proyecciones relacionados. Detecta el patrón arquitectónico actual (Capas Estrictas).
+5. **Tarea 5 — Preparación para la feature**: Confirma vía `codebase-memory-mcp cli search_graph --project "<proyecto>" --name-pattern ".*<símbolo>.*"` si ya existen controllers, services, repositories o proyecciones relacionados. Detecta el patrón arquitectónico actual (Capas Estrictas).
 <!-- fin -->
 6. **Tarea 6 — Historial de correcciones (vinculante)**: para cada fichero que la feature vaya a tocar, comprueba por **ruta completa** si existe su nota de correcciones (no busques por nombre base: hay clases homónimas en varios servicios).
    Si `knowledge-base/` solo contiene `.gitkeep` o no tiene ninguna nota `.md`, registra en la salida "sin historial (`knowledge-base` vacío)" en lugar de `enfoques_descartados` y continúa sin usar tgrep (no hay nada que buscar):
@@ -50,11 +50,11 @@ Si `tgrep` no está disponible, termina con `estado: bloqueado` y la causa. Salv
 
 ## Reglas
 
-- Aplica `.agents/rules/architecture-rules.md`, `.agents/rules/project.md`, `.agents/rules/graphify.md`, `.agents/rules/tgrep.md` y `.agents/rules/knowledge-base.md`.
-- **`knowledge-base/` nunca se consulta vía graphify** — siempre vía `tgrep` (precondición bloqueante, sin fallback a `grep`/`rg`; ver `.agents/rules/tgrep.md`).
+- Aplica `.agents/rules/architecture-rules.md`, `.agents/rules/project.md`, `.agents/rules/codebase-memory.md`, `.agents/rules/tgrep.md` y `.agents/rules/knowledge-base.md`.
+- **`knowledge-base/` nunca se consulta vía Codebase Memory** — siempre vía `tgrep` (precondición bloqueante, sin fallback a `grep`/`rg`; ver `.agents/rules/tgrep.md`).
 - **El grafo es la fuente primaria. Está prohibido leer archivos individuales para mapear contexto si el grafo puede responder.** Solo lee archivos si el grafo no existe, no responde o la información es insuficiente.
 - No asumas librerías, versiones ni patrones. Verifica con el grafo o archivos de configuración.
-- No generes ni actualices `graphify-out/graph.json`.
+- No reindexes (`python3 -I -B .agents/scripts/codebase-memory.py --indexar`) desde aquí.
 
 ## Salida
 
@@ -120,4 +120,4 @@ enfoques_descartados: []
 ```
 
 
-Consulta y actualización condicional del grafo: usa graphify solo cuando `herramientas.graphify` en `.agents/stack.yaml` sea `true`; con `false`, omite las consultas y actualizaciones al grafo.
+Consulta y actualización condicional del grafo: usa Codebase Memory solo cuando `herramientas.codebase_memory` en `.agents/stack.yaml` sea `true`; con `false`, omite las consultas y actualizaciones al grafo. Resuelve `<proyecto>` con `python3 -I -B .agents/scripts/codebase-memory.py --resolver` (exit 0) antes de consultar. Un resultado vacío no demuestra ausencia: usa `check_index_coverage` y, si hay dudas, busca en la fuente.

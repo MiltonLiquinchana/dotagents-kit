@@ -14,7 +14,7 @@ Ejecutar los siguientes puntos en orden. Si cualquiera falla, aplica el código,
    ```bash
    bash .agents/scripts/preflight.sh --workflow implement-feature --fase entrada
    ```
-   Comprueba: árbol limpio (`git status --porcelain`), herramientas y dependencias del proyecto, configuración ESLint y su canario, el grafo solo si `herramientas.graphify` es `true`, y `tgrep` independientemente de esa opción, además de SonarQube. Un grafo habilitado con 0 nodos es un aviso. Si el grafo falta o está corrupto, propone `.agents/workflows/graphify.md`; el usuario decide o se incluye en el plan aprobado. No ejecutes una reparación automática para superar el preflight.
+   Comprueba: árbol limpio (`git status --porcelain`), herramientas y dependencias del proyecto, configuración ESLint y su canario, el grafo solo si `herramientas.codebase_memory` es `true`, y `tgrep` independientemente de esa opción, además de SonarQube. Un grafo habilitado con 0 nodos es un aviso. Si el grafo falta o está corrupto, propone `.agents/workflows/codebase-memory.md`; el usuario decide o se incluye en el plan aprobado. No ejecutes una reparación automática para superar el preflight.
 2. **Proyecto registrado en SonarQube (MCP)**: resuelve `projectKey` como el valor `sonarqube.project_key` de `.agents/stack.yaml` (`node .agents/scripts/stack.mjs get sonarqube.project_key`). Consulta con `node .agents/scripts/sonar-mcp.mjs search_my_sonarqube_projects --json '{"q":"<projectKey>"}'`. Si no existe, pide permiso al usuario para crear un proyecto privado. Tras aprobación, ejecuta `node .agents/scripts/sonar-diff-gate.mjs --registrar-proyecto <projectKey>`. No leas credenciales ni uses `curl -u`; el script resuelve la configuración internamente y no imprime el token.
 
 3. **Canario SonarQube (MCP)**: `node .agents/scripts/sonar-diff-gate.mjs --canary` (exit 2 = `BLOCKED (infraestructura)`). Equivale a `analyze_code_snippet` con `fileContent` = contenido de `.agents/skills/code-reviewer/fixtures/canary-eval.ts`, `language: "ts"`, `scope: "MAIN"`, `projectKey: <projectKey>`. Pasa solo si aparece `typescript:S1523`.
@@ -66,19 +66,21 @@ En caso de duda, pregunta: "¿Esto es un ajuste puntual o involucra estructura n
   - En Ruta de Corrección pregunta: "El cambio fue rechazado por code-reviewer por una violación arquitectónica. Se requiere rediseñar la solución mediante Ruta Completa. ¿Procedemos?" En Ruta Completa pregunta: "El cambio fue rechazado por code-reviewer por una violación arquitectónica. Se requiere rediseñar desde el Paso 1 (contexto, contratos y arquitectura). ¿Procedemos?"
   - Si el usuario aprueba el reinicio: el workflow ejecuta limpieza git (`git checkout -- <rutas>`, `git clean -fd <rutas>`) usando la unión de las listas `## Archivos tocados` de los reportes del intento fallido. Incluye `package.json` y el lockfile del gestor si se instalaron dependencias; `node_modules` permanece como residuo documentado.
   - Mueve todos los archivos de `RUN_DIR` (salvo `request.md` y `manifest.md`) a `history/attempt-<n>/`.
-  - Si el grafo está habilitado, regénéralo con `GRAPHIFY_BACKEND=none graphify .` cuando haya cambiado `.graphifyignore`; en otro caso usa `GRAPHIFY_BACKEND=none graphify . --update`.
+  - Si el grafo está habilitado, ejecuta `python3 -I -B .agents/scripts/codebase-memory.py --indexar`; la reindexación aplica `.cbmignore`.
   - Reinicia desde el Paso 1 (en Ruta Completa) o escala a Ruta Completa (en Ruta de Corrección).
   - Límite global: máximo 2 reinicios arquitectónicos por feature. Al 3er rechazo arquitectónico, detén el flujo sin reiniciar.
 - **Bloqueo del preflight (`BLOCKED [CODIGO]`)**: aplica el remedio y el alcance del catálogo. Para los gates propios se conserva su veredicto de infraestructura:
   - Si SonarQube, el linter o el entorno fallan, detén el flujo e informa al usuario. No consume iteraciones del ciclo de corrección.
 - Cada fase recibe íntegros los artefactos de entrada, en especial el Plan aprobado completo con su sección de deuda técnica; no los sustituyas por resúmenes del orquestador.
-- `graphify hook install` no se instala: el hook de upstream no ofrece configuración persistente documentada para fijar `GRAPHIFY_BACKEND=none`; instalarlo permitiría reconstrucciones con otro backend. El workflow actualiza el grafo explícitamente con el modo AST.
+- No se instalan hooks de CBM; el índice se actualiza explícitamente desde la raíz.
 - **Manifest obligatorio**: tras cada paso, skill o acción del workflow, añade una fila a `RUN_DIR/manifest.md` con `| paso | skill o "workflow" | entradas | salida | estado | ejecución | iteración |`. Registra también reintentos, reinicios y pasos omitidos; para estos últimos usa `estado: omitido` e indica el motivo. Registra desde el Paso 0: preflight, inicialización de RUN_DIR y análisis de contexto o de solicitud. Mantén el historial, sin sobrescribir filas anteriores.
 - **Intervenciones del orquestador**: Si el orquestador edita o ajusta un archivo directamente, debe declararlo en el informe final con su motivo.
 
 
-- **Graphify opcional**: solo actualiza el grafo y ejecuta consultas `GRAPHIFY_BACKEND=none graphify query` si `herramientas.graphify` de `.agents/stack.yaml` es `true`. Con `false`, omite esas acciones y en SQL usa MCP en lectura, `db-index.py` y `tgrep` como fuentes de contexto.
+- **Codebase Memory opcional**: solo actualiza el grafo y ejecuta consultas `codebase-memory-mcp cli search_graph --project "<proyecto>" --name-pattern ".*<símbolo>.*"` si `herramientas.codebase_memory` de `.agents/stack.yaml` es `true`. Con `false`, omite esas acciones y en SQL usa MCP en lectura, `db-index.py` y `tgrep` como fuentes de contexto.
 
 - **Preparación del Paso 0**: si preflight informa PREPARACION, propone y, solo con permiso del usuario, ejecuta `bash .agents/scripts/preparar-proyecto.sh`, revisa los archivos que cambió, pide al usuario el commit `chore: preparar el proyecto para .agents` o hazlo únicamente con su permiso y vuelve a ejecutar preflight. Después propone iniciar/verificar tgrep, como parte de PREPARACION antes del plan y solo con permiso del usuario, con `bash .agents/scripts/preparar-proyecto.sh --arrancar-tgrep`; espera `Indexing: complete`. No improvises infraestructura en otro paso.
 
 Antes de aprobar cualquier plan, sigue `.agents/workflows/references/decisiones-stack.md`; consulta clases, remedios y códigos que resuelve este workflow en `.agents/config/codigos.yaml`.
+
+Solo con `herramientas.codebase_memory: true`, resuelve `<proyecto>` con `python3 -I -B .agents/scripts/codebase-memory.py --resolver` (exit 0) antes de las consultas. Un resultado vacío requiere comprobar cobertura con `check_index_coverage` y, si hay duda, buscar en fuente.

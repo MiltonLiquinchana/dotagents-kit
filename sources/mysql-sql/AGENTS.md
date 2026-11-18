@@ -20,7 +20,7 @@ proyecto). Los marcadores `<clave>` que aparezcan en skills, reglas o workflows 
 
 ## Herramientas de consulta
 - **MCP de base de datos (`<mcp.base_de_datos>`)**: Fuente primaria de verdad sobre el esquema real de la base de datos viva (las conexiones permitidas y su destino están en `conexiones` de `.agents/stack.yaml`; herramientas `<acción>_<conexión>`). Detalle en `.agents/rules/project.md`.
-- **graphify**: Si `herramientas.graphify` de `.agents/stack.yaml` es `true`, consulta el grafo (`graphify query`, `graphify path`, `graphify explain`) para dependencias de código; los notebooks no están en el grafo. Detalle en `.agents/rules/graphify.md`.
+- **Codebase Memory**: Si `herramientas.codebase_memory` de `.agents/stack.yaml` es `true`, consulta el grafo (`search_graph`, `trace_path`, `get_code_snippet` y `get_file_outline`, con el proyecto resuelto por `python3 -I -B .agents/scripts/codebase-memory.py --resolver`) para dependencias de código; los notebooks no están en el grafo. Detalle en `.agents/rules/codebase-memory.md`.
 - **tgrep**: Consulta notas de contexto e historial vinculante de correcciones previas en `knowledge-base/`. Detalle en `.agents/rules/tgrep.md`.
 
 ## Mapa de reglas
@@ -31,7 +31,7 @@ proyecto). Los marcadores `<clave>` que aparezcan en skills, reglas o workflows 
 | `.agents/rules/architecture-rules.md` | Reglas de arquitectura SQL (MySQL, tipos de datos, FKs, índices, SPs y contratos) |
 | `.agents/rules/sql-quality-gate.md` | Gate determinista de calidad, linter diferencial (sql-lint.py), sandbox y aserciones |
 | `.agents/rules/performance-budget.md` | Métricas y reglas de rendimiento de consultas y SPs (EXPLAIN, sargability) |
-| `.agents/rules/graphify.md` | Guía de uso y reglas del grafo de conocimiento de código |
+| `.agents/rules/codebase-memory.md` | Guía de uso y reglas del grafo de conocimiento de código |
 | `.agents/rules/knowledge-base.md` | Estructura, trazabilidad y mantenimiento de notas en `knowledge-base/` |
 | `.agents/rules/tgrep.md` | Búsqueda y consulta de historial de decisiones y correcciones con tgrep |
 

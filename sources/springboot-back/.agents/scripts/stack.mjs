@@ -34,7 +34,7 @@ const REQUIRED = [
   'backend.persistencia', 'backend.lombok', 'backend.prueba_viva',
   'sonarqube.url', 'backend.jdk_ruta_desarrollo',
   'integraciones.autenticacion', 'mcp.sonarqube',
-  'herramientas.graphify', 'git.rama_base',
+  'herramientas.codebase_memory', 'git.rama_base',
 
 ];
 
@@ -328,6 +328,11 @@ function cargar() {
 }
 function validarDatos(data, meta, opciones = cargarOpciones()) {
   if (data === null || typeof data !== 'object' || Array.isArray(data)) bloqueado('el documento no es un mapa de claves');
+  const herramientas = data.herramientas;
+  if (herramientas && typeof herramientas === 'object' && !Array.isArray(herramientas) &&
+      !Object.hasOwn(herramientas, 'codebase_memory') && Object.hasOwn(herramientas, 'graphify')) {
+    herramientas.codebase_memory = herramientas.graphify;
+  }
   const desarrollo = obtener(data, 'backend.jdk_ruta_desarrollo');
   if (desarrollo === undefined) bloqueado('falta la clave obligatoria backend.jdk_ruta_desarrollo; declara una sola ruta POSIX absoluta del JDK de desarrollo, sin comas, o null para no gestionar esa línea');
   if (desarrollo !== null && (typeof desarrollo !== 'string' || !desarrollo.startsWith('/') || !desarrollo.trim() || desarrollo.includes(',') || /[\r\n\0]/.test(desarrollo))) bloqueado('backend.jdk_ruta_desarrollo debe ser una sola ruta POSIX absoluta no vacía, sin comas, o null');
@@ -490,10 +495,13 @@ function avisosValidacion(data) {
   return avisos;
 }
 
-export function validar() {
+export function validar(avisarRetirada = false) {
   const data = cargar();
   validarOpciones(data);
   for (const aviso of avisosValidacion(data)) process.stderr.write(aviso + '\n');
+  if (avisarRetirada && Object.hasOwn(data.herramientas ?? {}, 'graphify')) {
+    process.stderr.write('aviso: herramientas.graphify está retirada; renómbrala a herramientas.codebase_memory en tu stack.yaml\n');
+  }
   return true;
 }
 
@@ -687,7 +695,7 @@ function main(argv) {
     return 0;
   }
   if (argv[0] === 'validate') {
-    validar();
+    validar(true);
     process.stdout.write(`OK: .agents/stack.yaml es válido para el stack '${STACK}'.\n`);
     return 0;
   }

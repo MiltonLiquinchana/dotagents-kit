@@ -33,15 +33,10 @@ query_<conexión>("SHOW INDEX FROM tabla") // verificar índices existentes para
 
 Solo herramientas de lectura (`schema_`, `query_`, `performance_`). NUNCA usar `execute_<conexión>` ni `transaction_<conexión>`.
 
-## Validación con Graphify
+## Validación con Codebase Memory
 
-Para detectar duplicados y acoplamientos, consulta en este orden: (1) `tgrep` sobre `knowledge-base/` (historial y notas), (2) MCP en modo lectura (`schema_<conexión>`, `query_<conexión>`), (3) `graphify query` / `graphify path` solo como complemento: no cubre notebooks `.dbcnb`.
-Si `graphify-out/graph.json` existe, usar Graphify para detectar:
-- Objetos SQL similares o duplicados en el repositorio (`graphify query "sp o tabla similar a <objeto>"`).
-- Acoplamientos no documentados entre objetos.
-- Lógica de negocio duplicada en múltiples objetos.
-
-Una "surprising connection" relevante a los objetos nuevos/modificados es **Bloqueante** si no está justificada en el plan.
+Para relaciones entre objetos consulta `tgrep` sobre `knowledge-base/`, `db-index.py` y el MCP en modo lectura (`schema_<conexión>`, `query_<conexión>`). Solo si `herramientas.codebase_memory` es `true` y `python3 -I -B .agents/scripts/codebase-memory.py --comprobar` da OK, complementa el SQL fuera de `.dbcnb` con `codebase-memory-mcp cli detect_changes --project "<proyecto>" --scope impact`, `codebase-memory-mcp cli trace_path --project "<proyecto>" --function-name "<símbolo>" --direction inbound` y `codebase-memory-mcp cli get_architecture --project "<proyecto>" --aspects '["cycles"]'`.
+Los candidatos a duplicación o código muerto son observaciones, nunca bloqueos. Los acoplamientos requieren verificación en fuente; no atribuyas a CBM dependencias de notebooks.
 
 ## Tareas
 
@@ -84,7 +79,7 @@ Una "surprising connection" relevante a los objetos nuevos/modificados es **Bloq
 - El veredicto `APPROVED WITH RECOMMENDATIONS` permite continuar; las sugerencias se documentan como deuda técnica en el reporte.
 - Si el código viola una regla de arquitectura, el veredicto debe ser automáticamente `CHANGES REQUIRED`.
 - No inventar observaciones subjetivas. Basarse en hechos técnicos verificables: grafo, MCP, linter, sandbox, reglas explícitas.
-- No generar ni actualizar `graphify-out/graph.json`.
+- No reindexes (`python3 -I -B .agents/scripts/codebase-memory.py --indexar`) desde aquí.
 
 ## Salida
 
@@ -135,6 +130,6 @@ APPROVED | APPROVED WITH RECOMMENDATIONS | CHANGES REQUIRED
 ```
 
 
-Consulta y actualización condicional del grafo: usa graphify solo cuando `herramientas.graphify` en `.agents/stack.yaml` sea `true`; con `false`, omite las consultas y actualizaciones al grafo.
+Consulta y actualización condicional del grafo: usa Codebase Memory solo cuando `herramientas.codebase_memory` en `.agents/stack.yaml` sea `true`; con `false`, omite las consultas y actualizaciones al grafo. Resuelve `<proyecto>` con `python3 -I -B .agents/scripts/codebase-memory.py --resolver` (exit 0) antes de consultar. Un resultado vacío no demuestra ausencia: usa `check_index_coverage` y, si hay dudas, busca en la fuente.
 
 Convenciones del proyecto: usa `nomenclatura` de `.agents/stack.yaml`: tablas `<nomenclatura.tablas>`, columnas `<nomenclatura.columnas>`, PK `<nomenclatura.clave_primaria>`, prefijos `<nomenclatura.prefijo_procedimiento>`, `<nomenclatura.prefijo_funcion>`, `<nomenclatura.prefijo_vista>`, `<nomenclatura.prefijo_evento>`, `<nomenclatura.prefijo_trigger>`, `<nomenclatura.prefijo_indice>`, `<nomenclatura.prefijo_parametro>` y `<nomenclatura.prefijo_variable>`. Los nombres concretos de los ejemplos usan la convención recomendada.

@@ -27,7 +27,7 @@ set -uo pipefail
 # y los ficheros nuevos sin rastrear se ven como nuevos. El índice real no se toca.
 #
 # Fuera de alcance (no se emiten): .agents/, knowledge-base/, node_modules/, .next/,
-# graphify-out/, y los .d.ts.
+# y los .d.ts.
 #
 # Salida stdout: JSON. Logs y errores: stderr.
 # Códigos de salida: 0 = OK, 2 = BLOCKED (infraestructura)
@@ -80,7 +80,7 @@ is_source() {
     [[ "$path" =~ \.(ts|tsx|mts|cts)$ ]] || return 1
     [[ "$path" == *.d.ts ]] && return 1
     case "$path" in
-        .agents/*|knowledge-base/*|node_modules/*|.next/*|graphify-out/*) return 1 ;;
+        .agents/*|knowledge-base/*|node_modules/*|.next/*) return 1 ;;
     esac
     return 0
 }

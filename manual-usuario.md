@@ -77,7 +77,7 @@ sustitúyela en cada comando y prompt.
 | MCP | Conexión para usar herramientas de un servidor externo. |
 | API | Operaciones que un programa ofrece a otro. |
 | Clerk | Servicio que permite iniciar sesión y verificar quién hace una petición. |
-| graphify | Herramienta que construye un grafo de relaciones del código para consultarlo. |
+| Codebase Memory | Herramienta que construye un grafo de relaciones del código para consultarlo. |
 | Gateway | Servicio de entrada que dirige peticiones hacia otros servicios. |
 | Context-path | Prefijo de URL de un servicio, por ejemplo `/pedidos`. |
 | Artefactos de DevOps | Archivos para construir o desplegar: Dockerfile, pipeline y manifiestos. |
@@ -112,7 +112,7 @@ Instala lo necesario para tu stack antes de lanzar sus workflows. Las opciones s
 | `jq` | Procesar datos JSON en los scripts | Obligatorio | Todos |
 | [`tgrep`](https://github.com/microsoft/tgrep) | Indexar y consultar notas; instala según su README (p. ej. `brew install tgrep`) | Obligatorio | Todos |
 | `knowledge-base/` | Guardar las notas indexadas; la crea `preparar-proyecto.sh` | Obligatoria | Todos |
-| [graphify](https://github.com/safishamsi/graphify) | Grafo de código; paquete `graphifyy`, CLI `graphify`; instalar con `uv tool install graphifyy` | Con `herramientas.graphify: true`; requiere [uv](https://docs.astral.sh/uv/) para esa instalación | Todos |
+| [Codebase Memory](https://github.com/DeusData/codebase-memory-mcp) | Índice local de código; CLI `codebase-memory-mcp`; instalar solo el binario con `curl -fsSL https://raw.githubusercontent.com/DeusData/codebase-memory-mcp/main/install.sh \| bash -s -- --skip-config` | Con `herramientas.codebase_memory: true` | Todos |
 | [Open Notebook](https://github.com/lfnovo/open-notebook) y proveedor de modelos | Documentación con chat, transformación y embeddings; API en `documentacion.url_api` (plantilla: `http://localhost:5055`) | Obligatorios; configura los modelos predeterminados | Todos |
 | IA con ejecución de comandos y escritura de archivos | Seguir las instrucciones y guardar cambios aprobados | Obligatoria; permite acceso local y las rutas indicadas abajo | Todos |
 | Node.js | Ejecutar los scripts `.mjs` | Obligatorio | Back y front |
@@ -175,13 +175,13 @@ Sigue este orden:
    Revisa y haz el commit `chore: preparar el proyecto para .agents` en tu repositorio.
 2. Si elegiste versiones distintas del código, pide change-version o ajusta tú las claves de versión de `stack.yaml` para que coincidan con las del código;
    change-version carga también la documentación de las versiones nuevas.
-3. Si `herramientas.graphify` es `true`, pide `.agents/workflows/graphify.md` para crear el grafo antes de
+3. Si `herramientas.codebase_memory` es `true`, pide `.agents/workflows/codebase-memory.md` para crear el grafo antes de
    `preparar-documentacion`: sin grafo, su cierre bloquea con `BLOCKED [GRAFO]`.
-   Con graphify activo, `GRAFO` bloquea en entrada y cierre de los workflows de código (grupo E);
+   Con Codebase Memory activo, `GRAFO` bloquea en entrada y cierre de los workflows de código (grupo E);
    en `change-version` (grupo V) avisa en ambas fases; en `preparar-documentacion` (grupo D) avisa
    en la entrada y bloquea al cerrar.
 4. Pide `.agents/workflows/preparar-documentacion.md` para completar la documentación del proyecto.
-   Hazlo antes que los demás workflows, salvo `graphify`: si falta documentación, los otros se detienen y te proponen
+   Hazlo antes que los demás workflows, salvo `codebase-memory`: si falta documentación, los otros se detienen y te proponen
    lanzarlo; no cargan fuentes por su cuenta. Solo `preparar-documentacion` (y change-version, para sus
    versiones) carga fuentes, y cada carga necesita que apruebes esa fuente y su hash.
 5. Elige la tarea en [Trabajar con los workflows](#2-trabajar-con-los-workflows).
@@ -235,8 +235,8 @@ Cuando la IA propone una tarea para resolver un aviso, tú decides si la lanzas.
 Las tareas de cambios presentan su plan antes de escribir; los ajustes de alcance necesitan aprobación.
 Las rutas completa y de corrección son recorridos internos de las features; no las lanzas por separado.
 
-Knowledge-base y graphify no cambian código, no traen plan propio ni requieren cobertura documental.
-Graphify construye el grafo del proyecto desde su raíz, no admite ruta y exige `herramientas.graphify: true`; knowledge-base pregunta
+Knowledge-base y Codebase Memory no cambian código, no traen plan propio ni requieren cobertura documental.
+Codebase Memory indexa el repositorio desde su raíz y exige `herramientas.codebase_memory: true`; knowledge-base pregunta
 qué fichero u objeto documentar. La IA puede proponerte estas tareas; tú eliges si las lanzas.
 
 ### Back
@@ -288,9 +288,9 @@ Las aprobaciones y límites están en [Open Notebook](#documentación-con-open-n
 
 Ejemplo: «Documenta el fichero <ruta> y verifica la vinculación de su nota».
 
-#### `graphify.md`
+#### `codebase-memory.md`
 
-Ejemplo: «Genera o repara el grafo del proyecto».
+Ejemplo: «Indexa el repositorio desde su raíz y comprueba el índice».
 
 ### Front
 
@@ -299,7 +299,7 @@ Ejemplo: «Genera o repara el grafo del proyecto».
 Pídelo para Next.js nuevo o en blanco, ya creado: «Prepara el núcleo de este front».
 Siembra red, errores y providers; instalar dependencias o registrar un proyecto SonarQube exige permiso.
 No declara plan propio ni migra un front avanzado. Su cierre exige preflight completo y espera si el
-árbol está sucio, sin commit automático. Si `herramientas.graphify` es `false`, omite el paso de Graphify y
+árbol está sucio, sin commit automático. Si `herramientas.codebase_memory` es `false`, omite el paso de Codebase Memory y
 lo deja anotado en su informe.
 
 #### `implement-feature.md`
@@ -309,7 +309,7 @@ para migrar de gestor. La **ruta completa** crea archivos/capas, contratos/firma
 visuales; la **de corrección** hace ajustes puntuales sin estructura nueva o cosméticos menores.
 Pregunta si hay duda y pide aprobar el plan. Si falta núcleo, propone bootstrap y espera tu respuesta.
 No repara infraestructura ajena; rediseñar exige confirmación. Incluye commit atómico tras comprobar;
-Graphify sí se condiciona a su opción en este workflow.
+Codebase Memory sí se condiciona a su opción en este workflow.
 
 #### `add-authentication.md`
 
@@ -340,7 +340,7 @@ Consulta aprobaciones y límites en [Open Notebook](#documentación-con-open-not
 
 Ejemplo: «Actualiza la nota de conocimiento de <ruta> y verifica su vinculación».
 
-#### `graphify.md`
+#### `codebase-memory.md`
 
 Ejemplo: «Actualiza el grafo de este front».
 
@@ -384,7 +384,7 @@ Consulta aprobaciones y límites en [Open Notebook](#documentación-con-open-not
 
 Ejemplo: «Documenta el procedimiento <nombre> y verifica la vinculación de su nota».
 
-#### `graphify.md`
+#### `codebase-memory.md`
 
 Ejemplo: «Genera o repara el grafo del proyecto SQL».
 
@@ -466,7 +466,7 @@ Ejemplo ilustrativo de cuatro líneas con el formato real; no es una ejecución 
 BLOCKED [REGENERAR] servicio=* cambió una opción sin regenerar
 AVISO [STACK_CODIGO] servicio=pedidos-service hay una diferencia que decidir
 PARTE DEL PLAN [PERFILES_TOCADO] servicio=pedidos-service falta el perfil local
-OMITIDO [GRAFO] (depende de herramientas.graphify=false) servicio=*
+OMITIDO [GRAFO] (depende de herramientas.codebase_memory=false) servicio=*
 ```
 
 | Salida | Cómo la interpretas |
@@ -1117,3 +1117,9 @@ Conserva los comodines de los patrones; [Cambiar algo después](#4-cambiar-algo-
 Completa `.agents/rules/project.md` con estructura, integraciones sin credenciales, estado del grafo y
 archivos sensibles; el generador lo crea una vez y no lo sobrescribe. Puedes consultar como referencia
 `<KIT>/ejemplos/<carpeta de tu stack>/project.md`: es un proyecto ficticio completado; no tienes que tocarlo.
+
+### Migración a Codebase Memory
+
+Renombra `herramientas.graphify` a `herramientas.codebase_memory` en `stack.yaml`. Ejecuta `bash .agents/scripts/preparar-proyecto.sh` para crear `.cbmignore`: copia también tus exclusiones de `.graphifyignore`. Revisa y confirma `.cbmignore` en Git; después puedes borrar `graphify-out/` y `.graphifyignore`. El índice es local: cada máquina lo crea una vez.
+
+Versión probada de la CLI: 0.12.1. Para actualizar, `codebase-memory-mcp update -y` imprime el comando del instalador que debes ejecutar.

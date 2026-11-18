@@ -112,13 +112,13 @@ npx tsc --noEmit
 ```
 Verifica que todos los archivos recién creados compilen sin errores de TypeScript y que los alias de path (`@/*`) en `tsconfig.json` apunten correctamente a la raíz del proyecto.
 
-### Paso 4: Inicialización del Grafo de Conocimiento (Graphify)
+### Paso 4: Inicialización del Grafo de Conocimiento (Codebase Memory)
 
-Si `herramientas.graphify` de `.agents/stack.yaml` es `true`, una vez sembrada la base ejecuta:
+Si `herramientas.codebase_memory` de `.agents/stack.yaml` es `true`, una vez sembrada la base ejecuta:
 ```bash
-GRAPHIFY_BACKEND=none graphify .
+python3 -I -B .agents/scripts/codebase-memory.py --indexar
 ```
-Esto genera `graphify-out/graph.json` con los primeros nodos del proyecto indexados para que las próximas features puedan consultar el grafo desde el primer momento.
+Esto crea el índice local de CBM con los primeros nodos del proyecto indexados para que las próximas features puedan consultar el grafo desde el primer momento.
 
 Si es `false`, omite este paso y regístralo en el informe del workflow.
 

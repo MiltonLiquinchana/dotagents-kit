@@ -183,38 +183,31 @@ class Preflight:
             self.add('PLANTILLA', out or 'El cotejo documental falló sin diagnóstico.')
 
     def grafo(self, params):
-        if params['herramientas.graphify'] != 'true':
-            self.omit('GRAFO', 'herramientas.graphify=false')
+        if params['herramientas.codebase_memory'] != 'true':
+            self.omit('GRAFO', 'herramientas.codebase_memory=false')
             return
-        try:
-            graph = json.loads((self.root / 'graphify-out/graph.json').read_text(encoding='utf-8'))
-            if not isinstance(graph.get('nodes'), list):
-                raise ValueError('nodes ausente')
-            if not graph['nodes']:
-                self.add('GRAFO_AVISO', 'grafo sin nodos.')
-            else:
-                print(f"✅ OK ({len(graph['nodes'])} nodos)")
-        except (OSError, UnicodeError, ValueError, TypeError, AttributeError) as error:
-            self.add('GRAFO', 'graphify-out/graph.json ausente, corrupto o sin nodes: ' + str(error))
-        cli = shutil.which('graphify')
+        cli = shutil.which('codebase-memory-mcp')
         if not cli:
-            self.add('HERRAMIENTA', "CLI graphify no encontrada en PATH. Instálala persistentemente con 'uv tool install graphifyy'.")
+            self.add('HERRAMIENTA', "CLI codebase-memory-mcp no encontrada en PATH. Instala solo el binario con: curl -fsSL https://raw.githubusercontent.com/DeusData/codebase-memory-mcp/main/install.sh | bash -s -- --skip-config")
             return
         _, version = self.output([cli, '--version'])
-        real = str(Path(cli).resolve())
-        if '/.cache/uv/archive-v0/' in real:
-            installations, seen = [], set()
-            for folder in os.get_exec_path():
-                candidate = Path(folder) / 'graphify'
-                if str(candidate) not in seen and candidate.is_file() and os.access(candidate, os.X_OK):
-                    seen.add(str(candidate))
-                    _, ver = self.output([candidate, '--version'])
-                    installations.append(f"  {candidate} -> {candidate.resolve()} ({ver.splitlines()[0] if ver else ''})")
-            self.add('GRAFO_AVISO', 'graphify resuelve a la caché de uv (enlace frágil): ' + real +
-                     '\nVersión: ' + version + '\nInstalaciones en PATH (la primera es la que se usa):\n' +
-                     '\n'.join(installations) + "\nRecomendado: 'uv tool install graphifyy' y que su ruta preceda a la del enlace. No bloquea.")
+        print('✅ OK (' + (version.splitlines()[0] if version else 'versión no informada') + ')')
+        rc, out = self.output(self.python('codebase-memory.py', '--comprobar'))
+        if rc or out.startswith('FALTA'):
+            self.add('GRAFO', out)
+            return
+        if out.startswith('AVISO'):
+            self.add('GRAFO_AVISO', out)
         else:
-            print('✅ OK (' + version + ')')
+            print(out)
+        if self.phase == 'entrada':
+            rc, out = self.output(self.python('codebase-memory.py', '--indexar'))
+            if rc:
+                self.add('GRAFO_AVISO', 'el índice existe pero no se pudo actualizar: ' + out)
+            elif out.startswith('AVISO'):
+                self.add('GRAFO_AVISO', out)
+            else:
+                print(out)
 
     def registro(self, ctx):
         registry = self.registry
@@ -294,7 +287,7 @@ class Preflight:
         ctx = json.loads(ctxout)
         ctx['datos'] = getattr(self, 'datos_entrada', {})
         params = {}
-        for key in ['herramientas.graphify', 'git.rama_base', *self.stack.KEYS]:
+        for key in ['herramientas.codebase_memory', 'git.rama_base', *self.stack.KEYS]:
             rc, val = self.datos(self.reader('get', key))
             if rc:
                 self.add('STACK_INVALIDO', val)

@@ -22,7 +22,7 @@ Si falta un artefacto obligatorio, no trabajes: escribe la salida con `estado: b
 
 ## Tareas
 
-1. **Tarea 1 — Pruebas unitarias**: Prueba toda lógica de `Service` y `ServiceImpl` con JUnit 5 y Mockito.
+1. **Tarea 1 — Pruebas unitarias**: Solo con `herramientas.codebase_memory: true`, resuelve `<proyecto>` con `python3 -I -B .agents/scripts/codebase-memory.py --resolver` (exit 0) y consulta `codebase-memory-mcp cli detect_changes --project "<proyecto>" --scope tests` para localizar pruebas existentes que alcanzan el código cambiado. Es orientativo: si no devuelve nada, continúa; no sustituye ejecutar la suite. Prueba toda lógica de `Service` y `ServiceImpl` con JUnit 5 y Mockito.
 2. **Tarea 2 — Pruebas de integración**:
    - `Controller`: usa `MockMvc` o `WebTestClient`.
 <!-- si backend.persistencia=jpa -->

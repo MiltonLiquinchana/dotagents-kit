@@ -10,7 +10,7 @@ Cómo funciona:
   "Archivos afectados", "Objetos de BD involucrados", ...). Solo cuentan las rutas
   de la primera pareja de tildes invertidas de cada viñeta: la de último segmento con
   extensión (como antes), o con nombre exacto Dockerfile, Jenkinsfile, Makefile,
-  Containerfile o gradlew, o un oculto exacto .gitignore, .dockerignore, .graphifyignore
+  Containerfile o gradlew, o un oculto exacto .gitignore, .dockerignore, .cbmignore
   o .gitattributes; en estos dos últimos casos la ruta completa no puede contener
   espacios, `|`, `*` ni `?`, ni terminar en `/`. Un pipeline sin extensión con otro nombre
   no se reconoce; nómbralo en el plan con extensión o amplía la lista.
@@ -38,7 +38,7 @@ from pathlib import Path
 EXCLUIDOS = (".agent-runs/", ".agents/", ".git/", "node_modules/")
 RUTA_BASE = re.compile(r"^[^`|]+?\.[A-Za-z][A-Za-z0-9]{1,9}$")
 NOMBRES_SIN_EXTENSION = ("Dockerfile", "Jenkinsfile", "Makefile", "Containerfile", "gradlew")
-OCULTOS = (".gitignore", ".dockerignore", ".graphifyignore", ".gitattributes")
+OCULTOS = (".gitignore", ".dockerignore", ".cbmignore", ".gitattributes")
 ENCABEZADO = re.compile(r"^(#{1,6})\s+(.*)$")
 VINETA = re.compile(r"^\s*(?:[-*]|\d+\.)\s")
 

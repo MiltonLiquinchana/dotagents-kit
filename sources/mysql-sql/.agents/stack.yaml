@@ -38,7 +38,7 @@ conexiones:                       # conexiones del db-mcp-server permitidas -> e
 
 
 herramientas:
-  graphify: false               # los notebooks .dbcnb no forman parte del grafo de código
+  codebase_memory: false  # el índice no cubre los notebooks .dbcnb
 
 git:
   rama_base: null               # null = HEAD; o referencia de rama para comparar

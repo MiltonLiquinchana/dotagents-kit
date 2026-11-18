@@ -1,11 +1,11 @@
 ---
 name: sql-context-analyzer
-description: Analiza el contexto técnico profundo de la base de datos MySQL en tiempo real usando db-mcp-server (FreePeak), tgrep sobre knowledge-base/ y, como complemento, Graphify.
+description: Analiza el contexto técnico profundo de la base de datos MySQL en tiempo real usando db-mcp-server (FreePeak), tgrep sobre knowledge-base/ y, como complemento, Codebase Memory.
 ---
 
 # SQL Context Analyzer
 
-Rol: Mapea la realidad actual de la base de datos antes de tomar decisiones técnicas. Trabaja con datos reales desde MCP, tgrep sobre knowledge-base/ y, como complemento, Graphify (que no cubre notebooks .dbcnb) — nunca con suposiciones.
+Rol: Mapea la realidad actual de la base de datos antes de tomar decisiones técnicas. Trabaja con datos reales desde MCP, tgrep sobre knowledge-base/ y, como complemento, Codebase Memory (que no cubre notebooks .dbcnb) — nunca con suposiciones.
 
 ## Entrada
 
@@ -24,7 +24,7 @@ Si `tgrep` no está disponible, termina con `estado: bloqueado` y la causa.
 
 1. **MCP (`db-mcp-server`)** — Fuente primaria. Siempre refleja el estado real y actual de la BD viva. Solo herramientas de lectura (`schema_`, `query_`, `performance_`). NUNCA usar `execute_<conexión>` ni `transaction_<conexión>`.
 2. **tgrep sobre `knowledge-base/`** — historial de decisiones y fixes por objeto.
-3. **Graphify** — Fuente secundaria. Responde relaciones entre objetos SQL del repositorio (¿qué triggers dependen de qué tablas?). Graphify no cubre `.dbcnb`.
+3. **Codebase Memory** — Fuente secundaria. Complementa relaciones del SQL fuera de notebooks; los objetos se consultan con `db-index.py` y el MCP de lectura existente. Codebase Memory no cubre `.dbcnb`.
 
 ## MCP Tools disponibles (solo lectura)
 
@@ -59,13 +59,13 @@ Los tools se generan dinámicamente por conexión, siempre con una conexión del
    SHOW CREATE TABLE nombre_tabla;
    ```
 6. **Tarea 6 — Consultar el grafo para relaciones entre objetos del repositorio**:
-   Si `graphify-out/graph.json` existe, usar Graphify para descubrir qué notebooks, scripts o triggers documentan o prueban objetos relacionados con la feature:
-   ```text
-   graphify query "procedimientos que dependen de la tabla <nombre_tabla>"
-   graphify query "notebooks que prueban <<nomenclatura.prefijo_procedimiento>nombre>"
-   graphify path "<tabla_origen>" "<tabla_destino>"
+   Consulta los objetos de notebooks con `db-index.py` y el MCP de lectura existente. Solo si `herramientas.codebase_memory` es `true` y `python3 -I -B .agents/scripts/codebase-memory.py --comprobar` da OK, complementa las relaciones del SQL fuera de `.dbcnb`:
+   ```bash
+   codebase-memory-mcp cli search_graph --project "<proyecto>" --name-pattern ".*<símbolo>.*"
+   codebase-memory-mcp cli trace_path --project "<proyecto>" --function-name "<símbolo>" --direction inbound
+   codebase-memory-mcp cli get_architecture --project "<proyecto>"
    ```
-   Un resultado vacío significa que el grafo no cubre notebooks, no que no haya dependencias; verifícalo por MCP. Si `graphify-out/graph.json` no existe, omitir esta consulta sin error.
+   Si la búsqueda por nombre no basta, complementa con `codebase-memory-mcp cli search_graph --project "<proyecto>" --semantic-query '["texto"]'`. Un resultado vacío no demuestra ausencia; revisa cobertura y fuente. Con índice ausente, omite el complemento sin error.
 7. **Tarea 7 — Detectar discrepancias**: Comparar lo encontrado en la BD real (MCP) con lo encontrado en notas de tgrep y notebooks leídos directamente. Reportar diferencias sin corregirlas.
 8. **Tarea 8 — Historial de correcciones (vinculante)**:
    ```bash
@@ -78,7 +78,7 @@ Los tools se generan dinámicamente por conexión, siempre con una conexión del
    ```
    Si existe, léela e incorpórala como contexto.
 10. **Tarea 10 — Complemento determinista**:
-    `graphify` no cubre los notebooks `.dbcnb`. Como complemento determinista (sin MCP y sin conectarse a la BD) usa el índice de objetos:
+    `Codebase Memory` no cubre los notebooks `.dbcnb`. Como complemento determinista (sin MCP y sin conectarse a la BD) usa el índice de objetos:
     ```bash
     python3 -B -E .agents/scripts/db-index.py                       # resumen por tipo
     python3 -B -E .agents/scripts/db-index.py --list PROCEDURE      # nombres de un tipo
@@ -92,12 +92,12 @@ Los tools se generan dinámicamente por conexión, siempre con una conexión del
 
 - **Marcadores de parámetros**: los marcadores `<clave>` (p. ej. `<base_de_datos.nombre>`) se resuelven con `.agents/stack.yaml` (los scripts los leen vía `stack.py`; los humanos, con `python3 -B -E .agents/scripts/stack.py get <clave>`).
 
-- Aplica `.agents/rules/architecture-rules.md`, `.agents/rules/project.md`, `.agents/rules/graphify.md`, `.agents/rules/tgrep.md` y `.agents/rules/knowledge-base.md`.
+- Aplica `.agents/rules/architecture-rules.md`, `.agents/rules/project.md`, `.agents/rules/codebase-memory.md`, `.agents/rules/tgrep.md` y `.agents/rules/knowledge-base.md`.
 - Solo lectura: NUNCA ejecutar DDL ni DML (`execute_<conexión>` ni `transaction_<conexión>`).
 - No asumir esquemas sin verificar con los tools MCP.
 - La conexión se elige con el mapa `conexiones` de `.agents/stack.yaml`: una entrada → esa; dos o más → pregunta; ninguna (`{}`) → sin ejecución en la base real. Nunca uses una conexión que no esté en el mapa, aunque el servidor MCP la exponga.
-- `knowledge-base/` nunca se consulta vía graphify; siempre vía `tgrep`.
-- No generes ni actualices `graphify-out/graph.json`.
+- `knowledge-base/` nunca se consulta vía Codebase Memory; siempre vía `tgrep`.
+- No reindexes (`python3 -I -B .agents/scripts/codebase-memory.py --indexar`) desde aquí.
 
 ## Salida
 
@@ -147,4 +147,6 @@ enfoques_descartados: []
 ```
 
 
-Si `herramientas.graphify` de `.agents/stack.yaml` es `false`, no consultes graphify: usa MCP de lectura, `db-index.py` y `tgrep` como fuentes de contexto.
+Si `herramientas.codebase_memory` de `.agents/stack.yaml` es `false`, no consultes Codebase Memory: usa MCP de lectura, `db-index.py` y `tgrep` como fuentes de contexto.
+
+Consulta y actualización condicional del grafo: usa Codebase Memory solo cuando `herramientas.codebase_memory` en `.agents/stack.yaml` sea `true`; con `false`, omite las consultas y actualizaciones al grafo. Resuelve `<proyecto>` con `python3 -I -B .agents/scripts/codebase-memory.py --resolver` (exit 0) antes de consultar. Un resultado vacío no demuestra ausencia: usa `check_index_coverage` y, si hay dudas, busca en la fuente.

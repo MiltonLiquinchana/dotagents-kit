@@ -31,7 +31,7 @@ Si `context.md` contiene `enfoques_descartados`, no repropongas esos enfoques si
 
 ### Modo `contratos`
 
-1. **Tarea 1 — Localizar contratos existentes**: Usa `graphify query "interfaces en domains/models relacionadas con <entidad>"` y `graphify path "<EntidadX>" "domains/responses"` para verificar si ya existe un contrato reutilizable. Si existe, reutilízalo.
+1. **Tarea 1 — Localizar contratos existentes**: Usa `codebase-memory-mcp cli search_graph --project "<proyecto>" --name-pattern ".*<símbolo>.*"` y `codebase-memory-mcp cli trace_path --project "<proyecto>" --function-name "<símbolo>" --direction inbound` para verificar si ya existe un contrato reutilizable. Si existe, reutilízalo.
 2. **Tarea 2 — Modelado (`domains/`)**: Genera interfaces y clases DTO con mappers estáticos:
    - `domains/models/<nomenclatura.modelo>.ts` (Interfaz pura de dominio)
    - `domains/request/<nomenclatura.request>.ts` (Payload con método estático `formatModelToRequest`)
@@ -111,7 +111,7 @@ Antes de escribir cualquier código propuesto, responde internamente estas cuatr
 3. ¿Todo lo que voy a usar existe en la versión del proyecto, y no solo en una posterior?
 4. ¿Hay algo obsoleto (deprecated) en esa versión que deba evitar?
 
-Fuentes de la comprobación, en este orden, sin duplicar lo que ya consultaste: primero tu auditoría de componentes reutilizables y las queries del grafo (condicionadas por `herramientas.graphify` de `.agents/stack.yaml`: qué existe ya en el código y qué patrón usa, para reutilizarlo o respetarlo; el grafo no contiene dependencias ni versiones), después tgrep sobre `knowledge-base/` (decisiones y correcciones previas que limiten la solución), luego las versiones, y por último la documentación, solo si te quedan dudas sobre qué ofrece esa versión.
+Fuentes de la comprobación, en este orden, sin duplicar lo que ya consultaste: primero tu auditoría de componentes reutilizables y las queries del grafo (condicionadas por `herramientas.codebase_memory` de `.agents/stack.yaml`: qué existe ya en el código y qué patrón usa, para reutilizarlo o respetarlo; el grafo no contiene dependencias ni versiones), después tgrep sobre `knowledge-base/` (decisiones y correcciones previas que limiten la solución), luego las versiones, y por último la documentación, solo si te quedan dudas sobre qué ofrece esa versión.
 
 - **Si el patrón del proyecto choca con lo idiomático de la versión**: el código nuevo es idiomático salvo que `knowledge-base/` registre una decisión de mantener el patrón; el código existente no se reescribe fuera del plan aprobado. Si la incoherencia importa, señálala en una línea del plan para que el usuario decida.
 - **Sin inventar**: si no estás seguro de que algo exista en la versión del proyecto, consulta Open Notebook mediante el script de documentación; si faltan fuentes, detén la propuesta y solicita su preparación con aprobación; si sigues sin certeza, dilo en una línea y pregunta al usuario antes de proponerlo. Nunca lo des por hecho.
@@ -154,7 +154,7 @@ fecha: <ISO-8601>
 El plan lista todas las dependencias nuevas que usará el código, incluidas las de validación y pruebas. Si durante el desarrollo se descubre que falta una, no la añadas: devuelve `estado: bloqueado` nombrando la dependencia que falta, para que el plan se enmiende con la aprobación del usuario.
 
 
-Consulta y actualización condicional del grafo: usa graphify solo cuando `herramientas.graphify` en `.agents/stack.yaml` sea `true`; con `false`, omite las consultas y actualizaciones al grafo.
+Consulta y actualización condicional del grafo: usa Codebase Memory solo cuando `herramientas.codebase_memory` en `.agents/stack.yaml` sea `true`; con `false`, omite las consultas y actualizaciones al grafo. Resuelve `<proyecto>` con `python3 -I -B .agents/scripts/codebase-memory.py --resolver` (exit 0) antes de consultar. Un resultado vacío no demuestra ausencia: usa `check_index_coverage` y, si hay dudas, busca en la fuente. Para rutas y dependencias existentes usa `codebase-memory-mcp cli get_architecture --project "<proyecto>" --aspects '["routes","dependencies"]'` y `codebase-memory-mcp cli trace_path --project "<proyecto>" --function-name "<símbolo>" --direction inbound`.
 <!-- si integraciones.gestion_usuarios=organizaciones|aplicacion -->
 
 ## Plantillas de perfiles

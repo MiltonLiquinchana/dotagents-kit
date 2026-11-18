@@ -401,8 +401,8 @@ Si hay varios locks, pregunta cuál vale; el agente podrá quitar el sobrante en
     Si el `stack.yaml` del usuario tiene `devops.rama_despliegue` y `devops.entorno`, propón convertirlos
     en una entrada de `devops.entornos` y pregúntale por los demás entornos.
 
-17. **`herramientas.graphify`:** `true` exige la CLI `graphify` instalada; los agentes la usan por
-    comando, no por su servidor MCP. Pregunta si la tiene instalada; si no, propón `false`.
+17. **`herramientas.codebase_memory`:** `true` exige la CLI `codebase-memory-mcp` instalada; pregunta si la tiene. Si no, propón `false` o este comando para instalar solo el binario, sin ejecutarlo:
+    `curl -fsSL https://raw.githubusercontent.com/DeusData/codebase-memory-mcp/main/install.sh | bash -s -- --skip-config`. El índice es local: cada máquina lo crea una vez.
 18. **`api_error.campo_codigo`** (back y front): antes de preguntar, muestra el ejemplo de `claves.md`, un
     cuerpo de error con y sin código, y para qué sirve; sin manejador, su respuesta define el contrato desde ahora. Recomienda `null` salvo que su API ya publique un
     código de negocio; se puede activar después.
@@ -507,7 +507,7 @@ Presenta siempre esta lista en este orden, indicando qué condiciones se cumplen
    repositorio o primer commit, lo prepara el usuario, nunca tú. Explica lo pendiente según `git status --short`.
 2. Si las versiones elegidas difieren del código detectado, ejecutar `.agents/workflows/change-version.md`
    (back, front y SQL según corresponda) antes de los workflows generales; o que el usuario ajuste `stack.yaml`. `change-version` carga su propia documentación: su entrada no bloquea por documentación faltante del catálogo.
-3. Si `herramientas.graphify` es `true`, ejecutar `.agents/workflows/graphify.md` para crear el grafo antes de `preparar-documentacion`; sin grafo, el cierre de `preparar-documentacion` bloquea con `GRAFO`.
+3. Si `herramientas.codebase_memory` es `true`, ejecutar `.agents/workflows/codebase-memory.md` para crear el grafo antes de `preparar-documentacion`; sin grafo, el cierre de `preparar-documentacion` bloquea con `GRAFO`.
 4. Ejecutar `.agents/workflows/preparar-documentacion.md`: propone URL oficiales, las carga con aprobación
    y comprueba versión y citas; servicios con igual versión comparten documentación. Si avisa de una
    librería fuera de catálogo, usar allí «Ampliar el catálogo del proyecto», nunca editarlo a mano.

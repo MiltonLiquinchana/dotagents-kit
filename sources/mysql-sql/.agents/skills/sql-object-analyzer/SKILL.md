@@ -107,7 +107,7 @@ NUNCA usar `execute_<conexión>` ni `transaction_<conexión>` en esta skill.
 - No modificar la lógica del SQL original.
 - Basarse solo en código real y evidencia verificable.
 - Si hay discrepancia entre notebook y BD viva, reportarla sin corregir.
-- No generar ni actualizar `graphify-out/graph.json`.
+- No reindexes (`python3 -I -B .agents/scripts/codebase-memory.py --indexar`) desde aquí.
 
 ## Salida
 
@@ -147,4 +147,6 @@ fecha: <ISO-8601>
 ```
 
 
-Si `herramientas.graphify` de `.agents/stack.yaml` es `false`, no consultes graphify: usa MCP de lectura, `db-index.py` y `tgrep` como fuentes de contexto.
+Si `herramientas.codebase_memory` de `.agents/stack.yaml` es `false`, no consultes Codebase Memory: usa MCP de lectura, `db-index.py` y `tgrep` como fuentes de contexto.
+
+Consulta y actualización condicional del grafo: usa Codebase Memory solo cuando `herramientas.codebase_memory` en `.agents/stack.yaml` sea `true`; con `false`, omite las consultas y actualizaciones al grafo. Resuelve `<proyecto>` con `python3 -I -B .agents/scripts/codebase-memory.py --resolver` (exit 0) antes de consultar. Un resultado vacío no demuestra ausencia: usa `check_index_coverage` y, si hay dudas, busca en la fuente. Los objetos se consultan con `db-index.py` y el MCP de lectura existente; CBM solo complementa SQL fuera de `.dbcnb`.

@@ -5,7 +5,7 @@ description: Base de conocimiento local (knowledge-base/), estructura de notas, 
 
 # Base de Conocimiento (knowledge-base/, indexada por tgrep)
 
-- **Ubicación**: `<raíz del repo>/knowledge-base/` — dentro del proyecto, versionada en Git junto al código. **Excluida de graphify** vía `.graphifyignore`; indexada y consultada por `tgrep` (ver `.agents/rules/tgrep.md`). Es Markdown plano y no depende de ninguna aplicación externa. El frontmatter YAML y la sintaxis `[[ruta]]` de las plantillas se mantienen porque no le cuestan nada a `tgrep` (busca texto plano, no interpreta sintaxis).
+- **Ubicación**: `<raíz del repo>/knowledge-base/` — dentro del proyecto, versionada en Git junto al código. **Excluida de Codebase Memory** vía `.cbmignore`; indexada y consultada por `tgrep` (ver `.agents/rules/tgrep.md`). Es Markdown plano y no depende de ninguna aplicación externa. El frontmatter YAML y la sintaxis `[[ruta]]` de las plantillas se mantienen porque no le cuestan nada a `tgrep` (busca texto plano, no interpreta sintaxis).
 - **Estructura**: `knowledge-base/<ruta relativa del fichero sin extensión>.md` — espeja 1:1 la estructura de `app/`, `controllers/`, `services/`, `repository/`, `domains/`, `utils/`, `lib/`, `hooks/` y `__tests__/`.
 - **Notas de corrección**: `knowledge-base/<misma ruta>-fixes.md` — log append-only. Cada corrección es una entrada nueva; nunca se sobreescribe.
 - **Trazabilidad código↔nota**: cada nota declara `fichero:` (ruta real del código) en su frontmatter — esta es la fuente de verdad para la búsqueda `tgrep -F "fichero: <ruta>" knowledge-base/ -l`. La sección `## Fichero fuente` en el cuerpo es un recordatorio visual redundante, opcional para notas nuevas; ninguna herramienta depende de ella.

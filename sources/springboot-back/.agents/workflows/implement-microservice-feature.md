@@ -10,9 +10,9 @@ description: Orquestador del flujo de cambios de código en microservicios Sprin
 
 Ejecutar los siguientes puntos en orden. Si cualquiera falla, aplica el código, la clase y el remedio literales del preflight según `.agents/config/codigos.yaml`; un bloqueo detiene el workflow.
 
-1. **Entorno determinista**: `bash .agents/scripts/preflight.sh --workflow implement-microservice-feature --fase entrada` continúa solo con exit 0; revisa avisos, partes del plan y omitidos según `.agents/config/codigos.yaml`. Comprueba el árbol git limpio, `git`/`node`/`jq`/`curl`, el JDK que Gradle usa en todos los servicios con `build.gradle` (cada `<servicio>` es un build Gradle independiente), los `gradlew`, la integridad de `graphify-out/graph.json`, la CLI `graphify`, el servidor `tgrep` sobre `knowledge-base/` (bloqueante, sin fallback a `grep`/`rg`) y que SonarQube responda `UP`.
+1. **Entorno determinista**: `bash .agents/scripts/preflight.sh --workflow implement-microservice-feature --fase entrada` continúa solo con exit 0; revisa avisos, partes del plan y omitidos según `.agents/config/codigos.yaml`. Comprueba el árbol git limpio, `git`/`node`/`jq`/`curl`, el JDK que Gradle usa en todos los servicios con `build.gradle` (cada `<servicio>` es un build Gradle independiente), los `gradlew`, el índice real de CBM, la CLI `codebase-memory-mcp`, el servidor `tgrep` sobre `knowledge-base/` (bloqueante, sin fallback a `grep`/`rg`) y que SonarQube responda `UP`.
    - El árbol limpio aplica al inicio de la feature. En cambios multi-servicio, los commits intermedios del propio flujo no vuelven a pasar por este script.
-   - Si falta `graph.json` o está corrupto, propone `.agents/workflows/graphify.md`; el usuario decide o se incluye la reparación en un plan aprobado. No ejecutes graphify solo para que pase el preflight.
+   - Si falta el índice de CBM o no está listo, propone `.agents/workflows/codebase-memory.md`; el usuario decide o se incluye la reparación en un plan aprobado. No indexes solo para que pase el preflight.
    - Un `AVISO [CODIGO]` no bloquea ni autoriza reparar algo fuera del plan.
 2. **Servidor de SonarQube (`<mcp.sonarqube>`) operativo**: `node .agents/scripts/sonar-mcp.mjs search_my_sonarqube_projects` responde con `estado: ok`.
 3. **Canario SonarQube**: `node .agents/scripts/sonar-diff-gate.mjs --canary` (exit 2 = `BLOCKED (infraestructura)`). Equivale a `analyze_code_snippet` con `fileContent` = contenido de `.agents/skills/code-reviewer/fixtures/CanarySqli.java`, `language: "java"`, `scope: "MAIN"` y sin `projectKey`. Pasa solo si aparece `java:S2077`.
@@ -54,7 +54,7 @@ Si la solicitud modifica más de un microservicio:
 
 1. **Plan maestro**: el orquestador reúne la solicitud completa y presenta `RUN_DIR/master-plan.md`, con endpoints, esquema de mensajes, dependencias y patrón de resiliencia. Espera aprobación explícita antes de construir cualquier servicio. Si la aprobación incluye condiciones, aplícalas, presenta el Plan maestro actualizado y espera confirmación final. Cada ajuste requiere aprobación y no tiene tope automático ni consume iteraciones de corrección.
 2. **Construcción de todos los servicios**: por orden de dependencia, crea `RUN_DIR/<servicio>/` con el juego de artefactos propio de ese servicio y ejecuta las etapas de contexto, diseño, aprobación, construcción, persistencia, documentación y pruebas de su Ruta Completa o de Corrección. Cada servicio aplica el contrato aprobado y no lo redefine localmente. En el Paso 1a de cada Ruta Completa, incluye `RUN_DIR/master-plan.md` como entrada obligatoria. En esta fase difiere la actualización del grafo, QA/revisión, validación de infraestructura, conocimiento/vinculación y commit; no revises ni comitees ningún servicio hasta que todos estén construidos.
-3. **Actualización única del grafo**: cuando terminen todas las construcciones, ejecuta `GRAPHIFY_BACKEND=none graphify . --update` una sola vez sobre el monorepo completo antes de revisar servicios. Registra su resultado en el manifest y en el `graph-status.md` de la raíz.
+3. **Actualización única del grafo**: cuando terminen todas las construcciones, ejecuta `python3 -I -B .agents/scripts/codebase-memory.py --indexar` una sola vez sobre el monorepo completo antes de revisar servicios. Registra su resultado en el manifest y en el `graph-status.md` de la raíz.
 4. **Revisión por servicio**: ejecuta `qa-engineer` cuando corresponda y `code-reviewer` por servicio, en el orden de dependencia, usando el grafo completo. El orquestador acepta `APPROVED` o `APPROVED WITH RECOMMENDATIONS` de `review.md` solo tras `node .agents/scripts/sonar-diff-gate.mjs --comprobar-recibo <RUN_DIR del servicio>/gate-recibo.json`; si falla, repite la revisión sin consumir iteración. Si un servicio falla la revisión por implementación, reconstruye solo ese servicio y vuelve a actualizar el grafo compartido antes de revisarlo de nuevo; esta actualización forma parte de la misma iteración. No reinicies el Plan maestro.
    - El revisor compara siempre con el Plan maestro y valida el contrato cruzado.
    - Si la reconstrucción rompe el contrato aprobado, es rechazo arquitectónico: pausa para confirmación y, si se aprueba, reinicia con un Plan maestro revisado, aplicando la limpieza y el tope global de reinicios.
@@ -65,7 +65,7 @@ Si la solicitud modifica más de un microservicio:
 5. Registra en el manifest "DevOps: omitido, sin infraestructura declarada" por servicio; continúa sin invocar una fase de infraestructura.
 <!-- fin -->
 6. **Commits secuenciales**: cuando todos los servicios tengan aprobación, actualiza la base de conocimiento y verifica la vinculación para cada servicio; después confirma un commit atómico por servicio (código y notas) en orden de dependencia. Si falla un commit, detén la secuencia e informa qué servicios ya se commitearon y cuál falló; no continúes con los demás.
-7. **Actualización final consolidada**: después de los commits, ejecuta otra vez `GRAPHIFY_BACKEND=none graphify . --update` sobre el monorepo completo como red de seguridad post-commit.
+7. **Actualización final consolidada**: después de los commits, ejecuta otra vez `python3 -I -B .agents/scripts/codebase-memory.py --indexar` sobre el monorepo completo como red de seguridad post-commit.
 
 El tope de 2 reinicios arquitectónicos aplica a la feature multi-servicio completa, no a cada servicio por separado.
 
@@ -93,7 +93,7 @@ El tope de 2 reinicios arquitectónicos aplica a la feature multi-servicio compl
   - En Ruta de Corrección pregunta: "El cambio fue rechazado por code-reviewer por una violación arquitectónica. Se requiere rediseñar la solución mediante Ruta Completa. ¿Procedemos?" En Ruta Completa pregunta: "El cambio fue rechazado por code-reviewer por una violación arquitectónica. Se requiere rediseñar desde el Paso 1 (contexto, patrón, contratos). ¿Procedemos?"
   - Si el usuario aprueba el reinicio: el workflow ejecuta limpieza git (`git checkout -- <rutas>`, `git clean -fd <rutas>`) usando la unión de las listas `## Archivos tocados` de los reportes del intento fallido.
   - Mueve todos los archivos de `RUN_DIR` (salvo `request.md` y `manifest.md`) a `history/attempt-<n>/`.
-  - Si el grafo está habilitado, regénéralo con `GRAPHIFY_BACKEND=none graphify .` cuando haya cambiado `.graphifyignore`; en otro caso usa `GRAPHIFY_BACKEND=none graphify . --update`.
+  - Si el grafo está habilitado, ejecuta `python3 -I -B .agents/scripts/codebase-memory.py --indexar`; la reindexación aplica `.cbmignore`.
   - Reinicia desde el Paso 1a (en Ruta Completa) o escala a Ruta Completa (en Ruta de Corrección).
   - Límite global: máximo 2 reinicios arquitectónicos por feature. Al 3er rechazo arquitectónico, detén el flujo sin reiniciar.
   - El tope de reinicios es compartido entre ambas rutas; al alcanzarlo, no limpies automáticamente. Informa que el working tree conserva el intento rechazado y pregunta al usuario si quiere descartarlo.
@@ -102,14 +102,14 @@ El tope de 2 reinicios arquitectónicos aplica a la feature multi-servicio compl
 <!-- si devops.infraestructura=jenkins-kubernetes -->
 - El ciclo de DevOps tiene un contador independiente de máximo 2 invocaciones. Si un reintento DevOps obliga además a repetir pruebas o revisión, consume también una iteración del ciclo principal al volver a pasar por esos gates.
 <!-- fin -->
-- `graphify hook install` no se instala: el hook de upstream no ofrece configuración persistente documentada para fijar `GRAPHIFY_BACKEND=none`; instalarlo permitiría reconstrucciones con otro backend. El workflow actualiza el grafo explícitamente con el modo AST.
+- No se instalan hooks de CBM; el índice se actualiza explícitamente desde la raíz.
 - Cada fase recibe íntegros los artefactos de entrada, en especial el Plan aprobado completo con su sección de deuda técnica; no los sustituyas por resúmenes del orquestador.
 - **Manifest obligatorio**: tras cada paso, skill o acción del workflow, añade una fila a `RUN_DIR/manifest.md` con `| paso | skill o "workflow" | entradas | salida | estado | ejecución | iteración |`. Registra también reintentos, reinicios y pasos omitidos; para estos últimos usa `estado: omitido` e indica el motivo. Registra desde el Paso 0: preflight, inicialización de RUN_DIR y análisis de contexto o de solicitud. En cambios multi-servicio, registra además cada operación en el manifest del servicio correspondiente; conserva el historial sin sobrescribir filas.
 - **Intervenciones del orquestador**: si el orquestador escribe o corrige directamente código, documentación o un artefacto que corresponde a una fase aislada, decláralo en el informe final con el motivo.
 - **Coherencia del Gateway**: si la feature modifica o añade un `context-path` en un microservicio, ejecuta `python3 -I -B .agents/scripts/servicios.py validar-gateway` e incluye en el diff del plan la actualización de `GatewayConfig.java` (path, uri y X-Gateway), sustituyendo la ruta desfasada sin duplicarla.
 
 
-- **Graphify opcional**: solo actualiza el grafo y ejecuta consultas `GRAPHIFY_BACKEND=none graphify query` si `herramientas.graphify` de `.agents/stack.yaml` es `true`. Con `false`, omite esas acciones y en SQL usa MCP en lectura, `db-index.py` y `tgrep` como fuentes de contexto.
+- **Codebase Memory opcional**: solo actualiza el grafo y ejecuta consultas `codebase-memory-mcp cli search_graph --project "<proyecto>" --name-pattern ".*<símbolo>.*"` si `herramientas.codebase_memory` de `.agents/stack.yaml` es `true`. Con `false`, omite esas acciones y en SQL usa MCP en lectura, `db-index.py` y `tgrep` como fuentes de contexto.
 
 - **Preparación del Paso 0**: si preflight informa PREPARACION, propone y, solo con permiso del usuario, ejecuta `bash .agents/scripts/preparar-proyecto.sh`, revisa los archivos que cambió, pide al usuario el commit `chore: preparar el proyecto para .agents` o hazlo únicamente con su permiso y vuelve a ejecutar preflight. Después propone iniciar/verificar tgrep, como parte de PREPARACION antes del plan y solo con permiso del usuario, con `bash .agents/scripts/preparar-proyecto.sh --arrancar-tgrep`; espera `Indexing: complete`. No improvises infraestructura en otro paso.
 
@@ -125,3 +125,5 @@ Con modo generar, DevOps corre después de la escritura exitosa y antes de compa
 <!-- fin -->
 
 Antes de aprobar cualquier plan, sigue `.agents/workflows/references/decisiones-stack.md`; consulta clases, remedios y códigos que resuelve este workflow en `.agents/config/codigos.yaml`.
+
+Solo con `herramientas.codebase_memory: true`, resuelve `<proyecto>` con `python3 -I -B .agents/scripts/codebase-memory.py --resolver` (exit 0) antes de las consultas. Un resultado vacío requiere comprobar cobertura con `check_index_coverage` y, si hay duda, buscar en fuente.

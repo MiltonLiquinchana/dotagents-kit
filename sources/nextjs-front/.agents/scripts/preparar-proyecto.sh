@@ -27,18 +27,25 @@ if [ "$COMPROBAR" -eq 1 ]; then
   report() { echo "$1"; MISSING=1; }
   [ -d knowledge-base ] || report "falta knowledge-base/"
   if [ -d knowledge-base ] && [ -z "$(find knowledge-base -mindepth 1 -maxdepth 1 -print -quit)" ] && [ ! -f knowledge-base/.gitkeep ]; then report "falta knowledge-base/.gitkeep"; fi
-  for line in '.agent-runs/' 'graphify-out/' 'logs/' 'knowledge-base/.tgrep/'; do grep -Fqx -- "$line" .gitignore 2>/dev/null || report "falta línea en .gitignore: $line"; done
+  for line in '.agent-runs/' 'logs/' 'knowledge-base/.tgrep/'; do grep -Fqx -- "$line" .gitignore 2>/dev/null || report "falta línea en .gitignore: $line"; done
   if [ -f .agents/config/eslint.agent.config.mjs ]; then
     ESLINT_DEST=$(node "$SCRIPTS/stack.mjs" get frontend.eslint_config 2>/dev/null) || ESLINT_DEST=""
     if [ -z "$ESLINT_DEST" ]; then report "no se pudo leer frontend.eslint_config"; elif [ ! -f "$ESLINT_DEST" ]; then report "falta $ESLINT_DEST"; fi
   fi
-  if [ ! -f .graphifyignore ]; then
-    report "falta .graphifyignore"
+  if [ ! -f .cbmignore ]; then
+    report "falta .cbmignore"
   fi
-  if [ ! -f .agents/config/graphifyignore ]; then
-    report "falta .agents/config/graphifyignore"
-  elif [ -f .graphifyignore ]; then
-    while IFS= read -r line || [ -n "$line" ]; do case "$line" in ''|\#*) continue ;; esac; grep -Fqx -- "$line" .graphifyignore 2>/dev/null || report "falta línea en .graphifyignore: $line"; done < .agents/config/graphifyignore
+  if [ ! -f .agents/config/cbmignore ]; then
+    report "falta .agents/config/cbmignore"
+  else
+    while IFS= read -r line || [ -n "$line" ]; do case "$line" in ''|\#*) continue ;; esac; grep -Fqx -- "$line" .cbmignore 2>/dev/null || report "falta línea en .cbmignore: $line"; done < .agents/config/cbmignore
+  fi
+  # Migra las exclusiones propias sin borrar el archivo antiguo.
+  if [ -f .graphifyignore ]; then
+    while IFS= read -r line || [ -n "$line" ]; do
+      case "$line" in ''|\#*|'graphify-out/') continue ;; esac
+      grep -Fqx -- "$line" .cbmignore 2>/dev/null || report "falta línea en .cbmignore: $line"
+    done < .graphifyignore
   fi
   if [ "$MISSING" -eq 0 ]; then echo "OK: preparación completa"; exit 0; else echo "preparación incompleta"; exit 1; fi
 fi
@@ -47,7 +54,7 @@ if [ ! -d knowledge-base ]; then mkdir -p knowledge-base; : > knowledge-base/.gi
 elif [ -z "$(find knowledge-base -mindepth 1 -maxdepth 1 -print -quit)" ]; then
   if [ ! -f knowledge-base/.gitkeep ]; then : > knowledge-base/.gitkeep; echo "creado knowledge-base/.gitkeep"; CHANGED=1; fi
 fi
-for line in '.agent-runs/' 'graphify-out/' 'logs/' 'knowledge-base/.tgrep/'; do ensure_line .gitignore "$line"; done
+for line in '.agent-runs/' 'logs/' 'knowledge-base/.tgrep/'; do ensure_line .gitignore "$line"; done
 # Config de ESLint del agente: copia la plantilla a la ruta de frontend.eslint_config solo si
 # el destino todavía no existe (idempotente: si ya existe, no se toca).
 ESLINT_SRC='.agents/config/eslint.agent.config.mjs'
@@ -61,10 +68,16 @@ if grep -q '\.env\*' .gitignore 2>/dev/null && ! grep -q '^!\.env\.example' .git
   awk '{print} index($0, ".env*") == 1 && !added {print "!.env.example"; added=1}' .gitignore > .gitignore.tmp && mv .gitignore.tmp .gitignore
   echo 'añadido !.env.example a .gitignore (justo tras la línea .env*)'; CHANGED=1
 fi
-IGNORE='.agents/config/graphifyignore'
-[ -f "$IGNORE" ] || { echo "BLOCKED: falta .agents/config/graphifyignore" >&2; exit 2; }
-[ -f .graphifyignore ] || : > .graphifyignore
-while IFS= read -r line || [ -n "$line" ]; do case "$line" in ''|\#*) continue ;; esac; ensure_line .graphifyignore "$line"; done < "$IGNORE"
+IGNORE='.agents/config/cbmignore'
+[ -f "$IGNORE" ] || { echo "BLOCKED: falta .agents/config/cbmignore" >&2; exit 2; }
+[ -f .cbmignore ] || : > .cbmignore
+while IFS= read -r line || [ -n "$line" ]; do case "$line" in ''|\#*) continue ;; esac; ensure_line .cbmignore "$line"; done < "$IGNORE"
+if [ -f .graphifyignore ]; then
+  while IFS= read -r line || [ -n "$line" ]; do
+    case "$line" in ''|\#*|'graphify-out/') continue ;; esac
+    ensure_line .cbmignore "$line"
+  done < .graphifyignore
+fi
 if [ "$ARRANCAR_TGREP" -eq 1 ]; then
   command -v tgrep >/dev/null 2>&1 || { echo 'BLOCKED: CLI tgrep no encontrada.' >&2; exit 2; }
   mkdir -p logs

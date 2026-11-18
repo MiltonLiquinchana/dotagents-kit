@@ -64,7 +64,7 @@ Antes de escribir código o SQL, aplica las comprobaciones del gate en `.agents/
 - Aplica `.agents/rules/architecture-rules.md`, `.agents/rules/sql-quality-gate.md` y `.agents/rules/project.md`.
 - NUNCA ejecutar DDL ni DML. Solo proponer.
 - Siempre validar compatibilidad de tipos con las FKs usando `schema_<conexión>` antes de proponer.
-- No generes ni actualices `graphify-out/graph.json`.
+- No reindexes (`python3 -I -B .agents/scripts/codebase-memory.py --indexar`) desde aquí.
 
 ## Comprobación de versiones (antes de proponer código)
 
@@ -139,8 +139,10 @@ CALL sp_...;
 El plan lista todas las dependencias nuevas que usará el código, incluidas las de validación y pruebas. Si durante el desarrollo se descubre que falta una, no la añadas: devuelve `estado: bloqueado` nombrando la dependencia que falta, para que el plan se enmiende con la aprobación del usuario.
 
 
-Si `herramientas.graphify` de `.agents/stack.yaml` es `false`, no consultes graphify: usa MCP de lectura, `db-index.py` y `tgrep` como fuentes de contexto.
+Si `herramientas.codebase_memory` de `.agents/stack.yaml` es `false`, no consultes Codebase Memory: usa MCP de lectura, `db-index.py` y `tgrep` como fuentes de contexto.
 
 Ejemplos de clientes y pedidos: ejemplo con la convención recomendada; las convenciones efectivas se leen de `.agents/stack.yaml`.
 
 Convenciones del proyecto: usa `nomenclatura` de `.agents/stack.yaml`: tablas `<nomenclatura.tablas>`, columnas `<nomenclatura.columnas>`, PK `<nomenclatura.clave_primaria>`, prefijos `<nomenclatura.prefijo_procedimiento>`, `<nomenclatura.prefijo_funcion>`, `<nomenclatura.prefijo_vista>`, `<nomenclatura.prefijo_evento>`, `<nomenclatura.prefijo_trigger>`, `<nomenclatura.prefijo_indice>`, `<nomenclatura.prefijo_parametro>` y `<nomenclatura.prefijo_variable>`. Los nombres concretos de los ejemplos usan la convención recomendada.
+
+Consulta y actualización condicional del grafo: usa Codebase Memory solo cuando `herramientas.codebase_memory` en `.agents/stack.yaml` sea `true`; con `false`, omite las consultas y actualizaciones al grafo. Resuelve `<proyecto>` con `python3 -I -B .agents/scripts/codebase-memory.py --resolver` (exit 0) antes de consultar. Un resultado vacío no demuestra ausencia: usa `check_index_coverage` y, si hay dudas, busca en la fuente. Los objetos se consultan con `db-index.py` y el MCP de lectura existente; CBM solo complementa SQL fuera de `.dbcnb`.

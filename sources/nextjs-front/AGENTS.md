@@ -15,11 +15,11 @@ proyecto). Los marcadores `<clave>` que aparezcan en skills, reglas o workflows 
 - **Criterio senior**: Decide con criterio de desarrollador frontend senior. No pidas permiso para decisiones técnicas cubiertas por las reglas.
 - **Confirmación explícita**: Solicita confirmación solo en decisiones irreversibles: cambios de dependencias mayores, cambios de contrato público entre capas o eliminación de componentes reutilizables.
 - **Secretos protegidos**: Ninguna tarea lee ni cita credenciales ni pasa archivos sensibles como contexto. Nunca escribas tokens en texto plano ni comandos. Está prohibido leer archivos de configuración para extraer un token, aunque no se imprima; solo los scripts de `.agents` pueden usarlo internamente. Si una credencial falla, detente e informa. Nunca pruebes otras credenciales, usuarios o servidores ni adivines contraseñas. Las rutas concretas de este proyecto están en `.agents/rules/project.md`.
-- **Autenticación**: Si `integraciones.autenticacion` de `.agents/stack.yaml` no es `ninguna`, consulta la sección de autenticación de `.agents/rules/project.md` antes de tocar ese código y apóyate en la skill externa declarada ahí; si `herramientas.graphify` de `.agents/stack.yaml` es `true`, actualiza el grafo con `GRAPHIFY_BACKEND=none graphify . --update`.
+- **Autenticación**: Si `integraciones.autenticacion` de `.agents/stack.yaml` no es `ninguna`, consulta la sección de autenticación de `.agents/rules/project.md` antes de tocar ese código y apóyate en la skill externa declarada ahí; si `herramientas.codebase_memory` de `.agents/stack.yaml` es `true`, actualiza el grafo con `python3 -I -B .agents/scripts/codebase-memory.py --indexar`.
 
 ## Herramientas de consulta
 - Las herramientas de SonarQube se llaman con `.agents/scripts/sonar-mcp.mjs`, no con el MCP directamente.
-- **graphify**: Si `herramientas.graphify` de `.agents/stack.yaml` es `true`, consulta el grafo (`graphify query`, `graphify path`, `graphify explain`) para comprender relaciones y arquitectura de código. Detalle en `.agents/rules/graphify.md`.
+- **Codebase Memory**: Si `herramientas.codebase_memory` de `.agents/stack.yaml` es `true`, consulta el grafo (`search_graph`, `trace_path`, `get_code_snippet` y `get_file_outline`, con el proyecto resuelto por `python3 -I -B .agents/scripts/codebase-memory.py --resolver`) para comprender relaciones y arquitectura de código. Detalle en `.agents/rules/codebase-memory.md`.
 - **tgrep**: Consulta notas de contexto e historial vinculante de correcciones previas en `knowledge-base/`. Detalle en `.agents/rules/tgrep.md`.
 
 ## Mapa de reglas
@@ -29,7 +29,7 @@ proyecto). Los marcadores `<clave>` que aparezcan en skills, reglas o workflows 
 | `.agents/rules/project.md` | Descripción de este proyecto: qué es, decisiones propias, integraciones y archivos sensibles y protegidos |
 | `.agents/rules/architecture-rules.md` | Reglas de Clean Architecture, TypeScript, calidad y aislamiento de re-renders |
 | `.agents/rules/performance-budget.md` | Presupuesto y métricas de rendimiento frontend (LCP, TBT, bundle) |
-| `.agents/rules/graphify.md` | Guía de uso y reglas del grafo de conocimiento de código |
+| `.agents/rules/codebase-memory.md` | Guía de uso y reglas del grafo de conocimiento de código |
 | `.agents/rules/knowledge-base.md` | Estructura, trazabilidad y mantenimiento de notas en `knowledge-base/` |
 | `.agents/rules/tgrep.md` | Búsqueda y consulta de historial de decisiones y correcciones con tgrep |
 

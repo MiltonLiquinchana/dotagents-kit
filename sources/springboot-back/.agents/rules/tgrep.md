@@ -5,7 +5,7 @@ description: Consult knowledge-base/ via tgrep for engineering history, past dec
 
 ## tgrep (notas de conocimiento, exclusivamente)
 
-`knowledge-base/` es la memoria de largo plazo del proyecto: decisiones, propósito y correcciones previas de cada fichero, en Markdown, indexadas por `tgrep` (no por graphify — ver `.agents/rules/graphify.md`). `tgrep` da recall exacto e instantáneo, sin costo de tokens.
+`knowledge-base/` es la memoria de largo plazo del proyecto: decisiones, propósito y correcciones previas de cada fichero, en Markdown, indexadas por `tgrep` (no por Codebase Memory — ver `.agents/rules/codebase-memory.md`). `tgrep` da recall exacto e instantáneo, sin costo de tokens.
 
 **Precondición (bloqueante)**: `tgrep` es parte de la infraestructura del flujo, no una ayuda opcional. `bash .agents/scripts/preflight.sh` la verifica y solo la arranca en la fase permitida sin bloqueos estrictos; si consultas fuera de ese flujo, confirma tú el estado:
 ```bash
@@ -30,7 +30,7 @@ Un servidor recién arrancado responde a `tgrep status` de inmediato, pero mient
 
 ## Reglas
 
-- **Búsqueda literal previa, antes de razonar sobre una feature o un bug**: extrae 2-4 términos clave (mensaje de error exacto, nombre de clase, componente) y búscalos primero aquí — gratis y determinístico, a diferencia de `graphify query`:
+- **Búsqueda literal previa, antes de razonar sobre una feature o un bug**: extrae 2-4 términos clave (mensaje de error exacto, nombre de clase, componente) y búscalos primero aquí — para recuperar decisiones documentadas antes de consultar el índice de código:
 ```bash
   tgrep "<término exacto>" knowledge-base/ -C 3
   tgrep "<término>" knowledge-base/ -g "*-fixes.md" -C 3
@@ -40,4 +40,4 @@ Un servidor recién arrancado responde a `tgrep status` de inmediato, pero mient
   tgrep -F "fichero: <ruta relativa del código>" knowledge-base/ -l
 ```
 - **Historial de correcciones vinculante**: antes de proponer un enfoque, comprueba **por ruta completa** si existe la nota de correcciones del fichero: `knowledge-base/<ruta relativa del código sin extensión>-fixes.md` con `test -f`. **No busques por nombre base**: en este monorepo hay clases homónimas en varios servicios (mismo nombre de clase en paquetes distintos) y proyecciones repetidas, y una búsqueda por nombre devuelve la nota de otro servicio. Si la nota existe, revisa si documentó un intento fallido sobre el mismo síntoma. Un enfoque ya marcado como fallido no puede reproponerse sin que el Plan documente por qué las condiciones cambiaron (ver análisis de contexto).
-- **Nunca esperes que graphify sepa esto.** Las dos fuentes son independientes por diseño.
+- **Nunca esperes que Codebase Memory sepa esto.** Las dos fuentes son independientes por diseño.

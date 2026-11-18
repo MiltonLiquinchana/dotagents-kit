@@ -15,10 +15,10 @@ La lista vigente es el mapa `notebooks` de `.agents/stack.yaml`: un notebook por
 ## Integraciones y conexiones
 - **db-mcp-server**: registrado en las herramientas con el nombre de `mcp.base_de_datos`; expone herramientas por conexión (`schema_<conexión>`, `query_<conexión>`, …).
 - **Conexiones**: la única permitida es la del mapa `conexiones` de `.agents/stack.yaml`, que apunta a una base de **desarrollo**, no a la de producción. Nunca se ejecutan escrituras sin sandbox y confirmación.
-- **Graphify y tgrep**: `knowledge-base/` y `.agents/` están excluidos vía `.graphifyignore`; `tgrep` consulta `knowledge-base/`.
+- **Codebase Memory y tgrep**: `knowledge-base/` y `.agents/` están excluidos vía `.cbmignore`; `tgrep` consulta `knowledge-base/`.
 
 ## Grafo de conocimiento: estado actual
-- Los notebooks `.dbcnb` no entran en el grafo: un resultado vacío de `graphify query` sobre un objeto SQL significa «el grafo no cubre notebooks», no «sin dependencias». Las relaciones reales se comprueban por MCP en modo lectura y con `db-index.py`.
+- Los objetos de notebooks `.dbcnb` se consultan con `db-index.py` y el MCP de lectura existente. Un resultado vacío de `db-index.py` requiere revisar los notebooks y la base real; CBM solo complementa el SQL fuera de notebooks y un resultado vacío no demuestra ausencia de dependencias.
 
 ## Nomenclatura del esquema
 La convención se declara en `nomenclatura` de `.agents/stack.yaml`.

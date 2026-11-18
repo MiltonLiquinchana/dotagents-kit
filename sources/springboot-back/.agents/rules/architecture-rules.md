@@ -126,7 +126,7 @@ Las decisiones de exposición interna definen el alcance de cada microservicio; 
 <!-- fin -->
 - **Gateway central**: El Gateway centraliza la seguridad y el ruteo cuando existe.
 - **Contratos claros**: Todo cambio en API pública se documenta y se revisa por compatibilidad.
-- **Auditoría de cambios**: Documenta cambios de comunicación entre servicios en Javadoc/README. El Grafo de Conocimiento (`GRAPHIFY_BACKEND=none graphify . --update`) indexa automáticamente los nuevos contratos y dependencias.
+- **Auditoría de cambios**: Documenta cambios de comunicación entre servicios en Javadoc/README. El Grafo de Conocimiento (`python3 -I -B .agents/scripts/codebase-memory.py --indexar`) indexa automáticamente los nuevos contratos y dependencias.
 
 ## 6. Migraciones de Esquema
 

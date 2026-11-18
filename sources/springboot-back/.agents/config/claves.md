@@ -416,25 +416,25 @@ Antes de crear la carpeta solo se declara `backend.gateway`; acuerda también CO
 **Respaldo:** `actualizar.py`; `scripts/stack.mjs`; `workflows/`.
 
 <!-- fin -->
-## herramientas.graphify
+## herramientas.codebase_memory
 
-**En resumen:** Decide si el agente usa un grafo que relaciona archivos y símbolos de tu código.
+**En resumen:** Decide si el agente usa Codebase Memory para relacionar archivos y símbolos del código mediante su CLI.
 
-**Dónde se ve en tu proyecto:** Si está activado, el grafo se guarda en `graphify-out/graph.json`. Por ejemplo, ayuda a consultar qué partes del proyecto de pedidos se relacionan; el dato se declara en `stack.yaml`.
+**Dónde se ve en tu proyecto:** Se declara en `stack.yaml`. El índice vive en la caché local de CBM, no en el repositorio; cada máquina lo crea una vez. `.cbmignore` acompaña a `.agents/` y excluye `knowledge-base/` y `.agents/`.
 
 **Para qué se usa:**
-- La comprobación previa exige la herramienta de línea de comandos `graphify` y un archivo de grafo legible cuando está activado.
-- Las tareas condicionan a esta decisión sus consultas y actualizaciones del grafo; no usan un servidor MCP de Graphify.
+- El preflight comprueba la CLI `codebase-memory-mcp` y el índice real del proyecto; si el índice existe, lo reindexa en la entrada para incorporar los cambios. En el cierre solo comprueba su estado.
+- Las consultas del código y sus actualizaciones se condicionan a esta clave. Las decisiones documentadas en `knowledge-base/` se consultan con `tgrep`.
 
-**Qué pasa si está mal:** Activarlo sin la herramienta o sin el archivo necesario detiene la comprobación previa. Desactivarlo omite el grafo, sin desactivar pruebas ni los demás controles.
+**Qué pasa si está mal:** Si falta la CLI, informa `HERRAMIENTA`; si falta el proyecto o el índice no está listo, informa `GRAFO`. Un índice vacío, degradado al indexar o que no se pudo actualizar produce `GRAFO_AVISO`. El tratamiento depende del workflow según el catálogo de códigos. La falta de preparación de `.cbmignore` se informa como `PREPARACION`. Desactivar la clave omite el grafo y conserva los demás controles.
 
-**Cambiarla después:** Edita `stack.yaml`; no requiere regenerar por esta clave. Si lo activas sin grafo, usa la tarea `graphify` (genera o repara el grafo) cuando la comprobación previa lo indique.
+**Cambiarla después:** Edita `stack.yaml`; esta clave no requiere regenerar. Al activarla, usa la tarea `codebase-memory` para indexar el proyecto antes de `preparar-documentacion`. La clave antigua `herramientas.graphify` sigue aceptándose como alias cuando falta la nueva; si existen ambas, gana `herramientas.codebase_memory`. Renombra la antigua para retirar el aviso de validación.
 
-**Si conservas lo detectado en tu código (por ejemplo, `false`):** Por ejemplo, trabajas en pedidos sin generar ese archivo. Recomendado: mantén la decisión y las herramientas que ya usa el proyecto; activar el grafo añade su preparación y sus controles.
+**Si conservas lo detectado en tu código (por ejemplo, `false`):** Trabajas en pedidos sin preparar el índice. Mantén la decisión y las herramientas del proyecto; activar el grafo añade su preparación y sus controles.
 
-**Si eliges `true`:** Por ejemplo, consultas las relaciones de pedidos en `graphify-out/graph.json`. Conviene si preparas un grafo de archivos de código; la plantilla de este stack lo activa al empezar.
+**Si eliges `true`:** Consultas las relaciones del código de pedidos en el índice local. La plantilla de este stack lo activa al empezar. El índice no proporciona dependencias ni versiones de Gradle: se leen de `<servicio>/build.gradle`. A diferencia del código Java, los notebooks SQL `.dbcnb` no quedan cubiertos por CBM; en el stack SQL se usa `db-index.py` y CBM es complementario.
 
-**Respaldo:** `scripts/preflight.py`; `rules/graphify.md`; `workflows/`; `scripts/stack.mjs`.
+**Respaldo:** `.agents/scripts/codebase-memory.py`; `.agents/scripts/preflight.py`; `.agents/rules/codebase-memory.md`; `.agents/workflows/codebase-memory.md`; `.agents/scripts/stack.mjs`.
 
 ## git.rama_base
 

@@ -5,7 +5,7 @@ description: Consult knowledge-base/ via tgrep for engineering history, past dec
 
 ## tgrep (notas de conocimiento, exclusivamente)
 
-`knowledge-base/` es la memoria de largo plazo del proyecto: decisiones, propósito y correcciones previas de cada objeto SQL, en Markdown, indexadas por `tgrep` (no por graphify — ver `.agents/rules/graphify.md`). `tgrep` da recall exacto e instantáneo.
+`knowledge-base/` es la memoria de largo plazo del proyecto: decisiones, propósito y correcciones previas de cada objeto SQL, en Markdown, indexadas por `tgrep` (no por Codebase Memory — ver `.agents/rules/codebase-memory.md`). `tgrep` da recall exacto e instantáneo.
 
 **Precondición bloqueante**: confirma que el servidor está activo antes de consultar:
 ```bash
@@ -45,4 +45,4 @@ Si tras 3 reintentos de `tgrep status` (2 s entre intentos; 1 s tras arrancar) n
   tgrep --files knowledge-base/ | grep -E "/<objeto>-fixes\.md$"
   ```
 - **Historial vinculante**: un enfoque marcado como fallido en `<objeto>-fixes.md` no puede reproponerse sin que el Plan documente por qué cambiaron las condiciones (ver análisis de contexto).
-- **Nunca esperes que graphify sepa esto**: las dos fuentes son independientes por diseño. Además, los notebooks `.dbcnb` no están en el grafo.
+- **Nunca esperes que Codebase Memory sepa esto**: las dos fuentes son independientes por diseño. Además, los notebooks `.dbcnb` no están en el grafo.
