@@ -1,0 +1,265 @@
+{
+  "tecnologias": {
+    "spring-boot": "Spring Boot",
+    "jdk": "JDK",
+    "lombok": "Lombok",
+    "spring-cloud": "Spring Cloud",
+    "spring-cloud-gateway": "Spring Cloud Gateway",
+    "spring-cloud-kubernetes": "Spring Cloud Kubernetes"
+  },
+  "fuentes": [
+    {
+      "id": "B1",
+      "tecnologia": "spring-boot",
+      "tipo": "referencia",
+      "url": "https://raw.githubusercontent.com/spring-projects/spring-boot/v{version}/documentation/spring-boot-docs/src/docs/antora/modules/reference/pages/{ruta}.adoc",
+      "secciones": "Configuración externa, cliente REST, validación, pruebas, Actuator y persistencia elegida",
+      "estado": "por verificar"
+    },
+    {
+      "id": "B3",
+      "tecnologia": "spring-boot",
+      "tipo": "notas",
+      "url": "https://github.com/spring-projects/spring-boot/releases/tag/v{version}",
+      "secciones": "Notas del parche exacto",
+      "estado": "por verificar"
+    },
+    {
+      "id": "B4",
+      "tecnologia": "spring-boot",
+      "tipo": "migracion",
+      "url": "https://raw.githubusercontent.com/spring-projects/spring-boot/v{version}/{ruta}",
+      "secciones": "Migración; localizar una ruta oficial en el tag, sin sustituirla por una wiki mutable",
+      "estado": "por verificar"
+    },
+    {
+      "id": "B5",
+      "tecnologia": "jdk",
+      "tipo": "referencia",
+      "url": "https://docs.oracle.com/en/java/javase/{version}/language/index.html",
+      "secciones": "Cambios del lenguaje",
+      "estado": "por verificar"
+    },
+    {
+      "id": "B6",
+      "tecnologia": "jdk",
+      "tipo": "referencia",
+      "url": "https://openjdk.org/projects/jdk/{version}/",
+      "secciones": "Novedades y lista de JEP de la versión; proponer cada fuente adicional por separado",
+      "estado": "por verificar"
+    },
+    {
+      "id": "B7",
+      "tecnologia": "jdk",
+      "tipo": "referencia",
+      "url": "https://raw.githubusercontent.com/openjdk/jdk/jdk-{version}-ga/{ruta}",
+      "secciones": "Capacidades de la etiqueta de publicación",
+      "estado": "por verificar"
+    },
+    {
+      "id": "B8",
+      "tecnologia": "lombok",
+      "tipo": "referencia",
+      "url": "https://raw.githubusercontent.com/projectlombok/lombok/v{version}/website/templates/features/{tema}.html",
+      "secciones": "Solo las anotaciones utilizadas; {tema} es el nombre del archivo de esa carpeta del tag, con sus mayúsculas (Data, Builder, GetterSetter, constructor, log…); omitir si no se usa Lombok",
+      "estado": "por verificar"
+    },
+    {
+      "id": "B9",
+      "tecnologia": "lombok",
+      "tipo": "notas",
+      "url": "https://github.com/projectlombok/lombok/releases/tag/v{version}",
+      "secciones": "Compatibilidad y cambios de Lombok",
+      "estado": "por verificar"
+    },
+    {
+      "id": "B10",
+      "tecnologia": "spring-cloud",
+      "tipo": "notas",
+      "url": "https://github.com/spring-cloud/spring-cloud-release/releases/tag/v{version}",
+      "secciones": "Notas de la BOM, solo cuando se usa Cloud",
+      "estado": "por verificar"
+    },
+    {
+      "id": "B11",
+      "tecnologia": "spring-cloud-gateway",
+      "tipo": "referencia",
+      "url": "https://raw.githubusercontent.com/spring-cloud/spring-cloud-gateway/v{version}/docs/modules/ROOT/pages/{ruta}.adoc",
+      "secciones": "Gateway reactivo: rutas y filtros; versión del módulo, no de la BOM",
+      "estado": "por verificar"
+    },
+    {
+      "id": "B12",
+      "tecnologia": "spring-cloud-kubernetes",
+      "tipo": "referencia",
+      "url": "https://raw.githubusercontent.com/spring-cloud/spring-cloud-kubernetes/v{version}/docs/modules/ROOT/pages/{ruta}.adoc",
+      "secciones": "Discovery y cliente solo cuando se usan; versión del módulo",
+      "estado": "por verificar"
+    },
+    {
+      "id": "B13",
+      "tecnologia": "jdk",
+      "tipo": "migracion",
+      "url": "https://docs.oracle.com/en/java/javase/{version}/migrate/index.html",
+      "secciones": "Migración del JDK de la versión; revisar cambios incompatibles",
+      "estado": "por verificar"
+    },
+    {
+      "id": "B14",
+      "tecnologia": "spring-boot",
+      "tipo": "requisitos",
+      "url": "https://raw.githubusercontent.com/spring-projects/spring-boot/v{version}/documentation/spring-boot-docs/src/docs/antora/modules/ROOT/pages/system-requirements.adoc",
+      "secciones": "Requisitos y compatibilidad con Java y herramientas de build de la versión exacta",
+      "estado": "por verificar"
+    }
+  ],
+  "detectores": [
+    {
+      "tecnologia": "jdk",
+      "tipo": "java"
+    },
+    {
+      "tecnologia": "spring-boot",
+      "tipo": "plugin",
+      "identificador": "org.springframework.boot"
+    },
+    {
+      "tecnologia": "spring-boot",
+      "tipo": "dependencia",
+      "prefijo": "org.springframework.boot:spring-boot-starter-"
+    },
+    {
+      "tecnologia": "lombok",
+      "tipo": "dependencia",
+      "identificador": "org.projectlombok:lombok",
+      "bom": "org.springframework.boot:spring-boot-dependencies",
+      "bom_propiedad": "lombok.version"
+    },
+    {
+      "tecnologia": "spring-cloud",
+      "tipo": "bom",
+      "identificador": "org.springframework.cloud:spring-cloud-dependencies"
+    },
+    {
+      "tecnologia": "spring-cloud-gateway",
+      "tipo": "dependencia",
+      "identificador": "org.springframework.cloud:spring-cloud-starter-gateway-server-webflux",
+      "bom": "org.springframework.cloud:spring-cloud-dependencies",
+      "bom_propiedad": "spring-cloud-gateway.version"
+    },
+    {
+      "tecnologia": "spring-cloud-gateway",
+      "tipo": "dependencia",
+      "identificador": "org.springframework.cloud:spring-cloud-starter-gateway",
+      "bom": "org.springframework.cloud:spring-cloud-dependencies",
+      "bom_propiedad": "spring-cloud-gateway.version"
+    },
+    {
+      "tecnologia": "spring-cloud-gateway",
+      "tipo": "dependencia",
+      "identificador": "org.springframework.cloud:spring-cloud-gateway-server-webflux",
+      "bom": "org.springframework.cloud:spring-cloud-dependencies",
+      "bom_propiedad": "spring-cloud-gateway.version"
+    },
+    {
+      "tecnologia": "spring-cloud-kubernetes",
+      "tipo": "dependencia",
+      "identificador": "org.springframework.cloud:spring-cloud-starter-kubernetes-client",
+      "bom": "org.springframework.cloud:spring-cloud-dependencies",
+      "bom_propiedad": "spring-cloud-kubernetes.version"
+    },
+    {
+      "tecnologia": "spring-cloud-kubernetes",
+      "tipo": "dependencia",
+      "identificador": "org.springframework.cloud:spring-cloud-starter-kubernetes-client-all",
+      "bom": "org.springframework.cloud:spring-cloud-dependencies",
+      "bom_propiedad": "spring-cloud-kubernetes.version"
+    },
+    {
+      "tecnologia": "spring-cloud-kubernetes",
+      "tipo": "dependencia",
+      "identificador": "org.springframework.cloud:spring-cloud-starter-kubernetes-client-discovery",
+      "bom": "org.springframework.cloud:spring-cloud-dependencies",
+      "bom_propiedad": "spring-cloud-kubernetes.version"
+    }
+  ],
+  "cubiertas_por_boot": [
+    {
+      "prefijo": "org.springframework.boot:spring-boot-starter-"
+    }
+  ],
+  "dominios_oficiales": {
+    "jdk": [
+      {
+        "host": "docs.oracle.com",
+        "ruta": "/en/java/"
+      },
+      {
+        "host": "openjdk.org",
+        "ruta": "/"
+      },
+      {
+        "host": "github.com",
+        "ruta": "/openjdk/jdk/"
+      },
+      {
+        "host": "raw.githubusercontent.com",
+        "ruta": "/openjdk/jdk/"
+      }
+    ],
+    "spring-boot": [
+      {
+        "host": "docs.spring.io",
+        "ruta": "/spring-boot/"
+      },
+      {
+        "host": "github.com",
+        "ruta": "/spring-projects/spring-boot/"
+      },
+      {
+        "host": "raw.githubusercontent.com",
+        "ruta": "/spring-projects/spring-boot/"
+      }
+    ],
+    "spring-cloud": [
+      {
+        "host": "github.com",
+        "ruta": "/spring-cloud/spring-cloud-release/"
+      },
+      {
+        "host": "raw.githubusercontent.com",
+        "ruta": "/spring-cloud/spring-cloud-release/"
+      }
+    ],
+    "spring-cloud-gateway": [
+      {
+        "host": "github.com",
+        "ruta": "/spring-cloud/spring-cloud-gateway/"
+      },
+      {
+        "host": "raw.githubusercontent.com",
+        "ruta": "/spring-cloud/spring-cloud-gateway/"
+      }
+    ],
+    "spring-cloud-kubernetes": [
+      {
+        "host": "github.com",
+        "ruta": "/spring-cloud/spring-cloud-kubernetes/"
+      },
+      {
+        "host": "raw.githubusercontent.com",
+        "ruta": "/spring-cloud/spring-cloud-kubernetes/"
+      }
+    ],
+    "lombok": [
+      {
+        "host": "github.com",
+        "ruta": "/projectlombok/lombok/"
+      },
+      {
+        "host": "raw.githubusercontent.com",
+        "ruta": "/projectlombok/lombok/"
+      }
+    ]
+  }
+}

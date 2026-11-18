@@ -1,0 +1,25 @@
+# Configuración del perfil __ENTORNO__ del gateway __NOMBRE__.
+# si devops.infraestructura=jenkins-kubernetes
+# spring.application.name conserva __NOMBRE__-__ENTORNO__; lb:// usa el Service
+# __BASE__-__ENTORNO__-service, calculado por servicios.py nombres.
+# fin
+spring:
+  application:
+    name: __NOMBRE__-__ENTORNO__
+
+server:
+  port: __PUERTO__
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway,routes,metrics
+  endpoint:
+    health:
+      show-details: always
+# si devops.infraestructura=jenkins-kubernetes
+
+gateway:
+  sufijo: __ENTORNO__
+# fin

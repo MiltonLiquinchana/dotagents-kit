@@ -1,0 +1,189 @@
+# ==============================================================================
+# DESPLIEGUE DEL MICROSERVICIO DE __BASE__ (__NOMBRE__) - __CARPETA_ENTORNO__
+# Define la especificación del Deployment, límites de recursos, inyección de variables 
+# de entorno desde Secrets, volumen de logs, probes de salud y tolerancias de nodo.
+# ==============================================================================
+
+apiVersion: apps/v1          # Versión estable de la API para cargas de trabajo tipo Deployment
+kind: Deployment             # Tipo de recurso: Controlador para la gestión declarativa de Pods
+metadata:
+  name: __BASE__-__ENTORNO__-deployment
+  namespace: default
+  labels:                    # Etiquetas de clasificación y control de red interna
+    app: __BASE__-__ENTORNO__
+    tier: application
+    component: backend
+    version: "1.0"
+    environment: __CARPETA_ENTORNO__
+    framework: spring-boot
+    managed-by: manual
+    service-type: microservice
+  annotations:               # Metadatos informativos y de contacto de SRE
+    description: "__BASE__ service deployment with __REPLICAS__ replicas"
+
+spec:
+  replicas: __REPLICAS__                # Número de réplicas del entorno
+  strategy:
+    type: RollingUpdate      # Estrategia de actualización progresiva sin tiempo de inactividad
+    rollingUpdate:
+      maxUnavailable: 1      # Número máximo de Pods no disponibles durante la actualización
+      maxSurge: 1            # Número máximo de Pods creados por encima del valor deseado
+
+  selector:                  # Selector para emparejar Pods gestionados
+    matchLabels:
+      app: __BASE__-__ENTORNO__
+      tier: application
+
+  template:                  # Plantilla de definición del Pod
+    metadata:
+      labels:                # Etiquetas inyectadas en los Pods generados
+        app: __BASE__-__ENTORNO__
+        tier: application
+        component: backend
+        version: "1.0"
+        environment: __CARPETA_ENTORNO__
+        framework: spring-boot
+
+    spec:
+      # SEGURIDAD: Inhabilitar la auto-inyección del token de la ServiceAccount por defecto
+      automountServiceAccountToken: false
+      
+      securityContext:       # Contexto de seguridad del Pod (Hardening de usuario no root)
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+
+      containers:
+        - name: __BASE__-__ENTORNO__-service-container
+          image: <devops.registry>/__NOMBRE__
+          imagePullPolicy: Always
+
+          securityContext:   # Restricciones a nivel de contenedor
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+                - ALL
+
+          # ASIGNACIÓN DE RECURSOS (DIMENSIONAMIENTO SRE):
+          resources:
+            requests:
+              memory: "__MEMORIA_PETICION__"    # Reserva de memoria RAM garantizada
+              cpu: "__CPU_PETICION__"        # Equivalente a 0.25 CPU Core
+              ephemeral-storage: "256Mi"
+            limits:
+              memory: "__MEMORIA_LIMITE__"    # Límite máximo de memoria RAM
+              cpu: "__CPU_LIMITE__"        # Equivalente a 0.5 CPU Core
+              ephemeral-storage: "512Mi"
+
+          ports:
+            - containerPort: __PUERTO__
+              name: http
+              protocol: TCP
+
+          env:               # Inyección de variables de entorno de base de datos desde Secrets
+            - name: DB_HOST___ENTORNO_MAYUS__
+              valueFrom:
+                secretKeyRef:
+                  name: __BASE__-__ENTORNO__-service-db-secret
+                  key: DB_HOST___ENTORNO_MAYUS__
+            - name: DB_PORT___ENTORNO_MAYUS__
+              valueFrom:
+                secretKeyRef:
+                  name: __BASE__-__ENTORNO__-service-db-secret
+                  key: DB_PORT___ENTORNO_MAYUS__
+            - name: DB_NAME___ENTORNO_MAYUS__
+              valueFrom:
+                secretKeyRef:
+                  name: __BASE__-__ENTORNO__-service-db-secret
+                  key: DB_NAME___ENTORNO_MAYUS__
+            - name: USER_NAME_DB___ENTORNO_MAYUS__
+              valueFrom:
+                secretKeyRef:
+                  name: __BASE__-__ENTORNO__-service-db-secret
+                  key: USER_NAME_DB___ENTORNO_MAYUS__
+            - name: PASSWORD_DB___ENTORNO_MAYUS__
+              valueFrom:
+                secretKeyRef:
+                  name: __BASE__-__ENTORNO__-service-db-secret
+                  key: PASSWORD_DB___ENTORNO_MAYUS__
+            - name: SPRING_PROFILES_ACTIVE
+              value: "docker,k8s,__ENTORNO__"
+            - name: JAVA_OPTS
+              value: "-XX:MaxRAMPercentage=75 -XX:InitialRAMPercentage=37.5 -XX:+UseG1GC -XX:+UseContainerSupport"
+
+          volumeMounts:      # Montaje del volumen de persistencia para almacenamiento de logs
+            - mountPath: "/app/logs"
+              name: __BASE__-volume
+
+          # MONITOREO DE ESTADO (PROBES DE SALUD ACTUATOR):
+
+          # 1. STARTUP PROBE (Sonda de Inicio):
+# si backend.persistencia=jpa
+          # Evita reinicios prematuros durante la fase pesada de arranque de Spring Boot y JPA.
+# si backend.persistencia=jdbc
+          # Evita reinicios prematuros durante la fase pesada de arranque de Spring Boot.
+# fin
+          startupProbe:
+            httpGet:
+              path: __CONTEXT_PATH__/actuator/health
+              port: __PUERTO__
+              scheme: HTTP
+            initialDelaySeconds: 60 # Tiempo de gracia inicial para el arranque de la JVM
+            periodSeconds: 10       # Frecuencia de verificación
+            timeoutSeconds: 10      # Tiempo de espera por respuesta
+            failureThreshold: 18    # 18 intentos x 10s = 3 minutos de gracia antes de catalogar fallo
+            successThreshold: 1     # Éxitos requeridos para activar las demás sondas
+
+          # 2. LIVENESS PROBE (Sonda de Supervivencia):
+          # Detecta si el microservicio está bloqueado o en deadlock (provoca recreación del contenedor).
+          livenessProbe:
+            httpGet:
+              path: __CONTEXT_PATH__/actuator/health
+              port: __PUERTO__
+              scheme: HTTP
+            initialDelaySeconds: 0  # Comprobación inmediata tras pasar el arranque
+            periodSeconds: 30       # Frecuencia pasiva cada 30 segundos
+            timeoutSeconds: 10      # Tiempo de espera
+            failureThreshold: 3     # 3 fallos consecutivos provocan el reinicio del Pod
+            successThreshold: 1     # Éxitos requeridos para mantenerse saludable
+
+          # 3. READINESS PROBE (Sonda de Disponibilidad):
+          # Comprueba si el microservicio está listo para recibir y procesar peticiones de la red.
+          readinessProbe:
+            httpGet:
+              path: __CONTEXT_PATH__/actuator/health
+              port: __PUERTO__
+              scheme: HTTP
+            initialDelaySeconds: 0 
+            periodSeconds: 10       # Frecuencia rápida para balanceo dinámico
+            timeoutSeconds: 5       # Tolerancia de respuesta estricta
+            failureThreshold: 3     # 3 fallos consecutivos remueven temporalmente el Pod del balanceo
+            successThreshold: 1     # Éxito requerido para reincorporar el Pod al Service
+
+      volumes:               # Definición lógica de volúmenes del Pod
+        - name: __BASE__-volume
+          persistentVolumeClaim:
+            claimName: __BASE__-__ENTORNO__-claim
+
+      restartPolicy: Always  # Garantiza que el Pod siempre se reinicie ante fallos de ejecución
+
+      # PARADA ELEGANTE (GRACEFUL SHUTDOWN):
+      # Brinda un tiempo de gracia para finalizar peticiones en curso y cerrar transacciones de BD.
+      terminationGracePeriodSeconds: 60 
+
+      # TOLERANCIAS DE NODO (NODE TOLERATIONS):
+      # Previene la expulsión inmediata ante fluctuaciones temporales de conectividad del clúster.
+      tolerations:
+        # Tolerancia para nodos reportados en estado 'NotReady' (e.g. reinicios)
+        - key: "node.kubernetes.io/not-ready"
+          operator: "Exists"
+          effect: "NoExecute"
+          tolerationSeconds: 300 
+
+        # Tolerancia para nodos inalcanzables ('Unreachable')
+        - key: "node.kubernetes.io/unreachable"
+          operator: "Exists"
+          effect: "NoExecute"
+          tolerationSeconds: 300

@@ -1,0 +1,50 @@
+# ==============================================================================
+# RECLAMACIÓN LÓGICA DE ALMACENAMIENTO (PERSISTENT VOLUME CLAIM) - __NOMBRE__ (DESARROLLO)
+# Reclama espacio persistente en el clúster para persistencia de logs de __BASE__.
+# ==============================================================================
+
+apiVersion: v1              # Versión core de la API de Kubernetes para PVCs
+kind: PersistentVolumeClaim # Tipo de recurso: Reclamación de volumen persistente
+metadata:
+  name: __BASE__-__ENTORNO__-claim   # Nombre único del claim (referenciado en el Deployment)
+  labels:                   # Etiquetas organizativas del volumen lógico
+    app: __BASE__-__ENTORNO__
+    tier: application 
+    component: backend 
+    version: "1.0" 
+    environment: __CARPETA_ENTORNO__
+    storage-type: local 
+    managed-by: manual 
+    claim-type: log-storage 
+    
+  annotations:              # Metadatos descriptivos de SRE y políticas de backup
+    description: "Persistent storage claim for __BASE__ __ENTORNO__ logs"
+    usage-purpose: "__BASE__-__ENTORNO__-log-storage"
+    backup-schedule: "daily"
+    volume.beta.kubernetes.io/storage-provisioner: "kubernetes.io/no-provisioner"
+
+spec:
+  # SELECTOR PARA ENLACE SELECTIVO:
+  # Garantiza que el claim se vincule únicamente con el PV que posea estas etiquetas.
+  selector:
+    matchLabels:
+      app: __BASE__-__ENTORNO__
+      environment: __CARPETA_ENTORNO__
+      storage-type: local 
+
+  # CLASE DE ALMACENAMIENTO:
+  # Coincide con la clase manual del PV configurado para el binding estático.
+  storageClassName: manual 
+
+  # RECURSOS SOLICITADOS:
+  resources:
+    requests:
+      storage: 2Gi          # Solicita 2 Gibibytes de capacidad de almacenamiento
+
+  # MODO DE VOLUMEN: Montaje como sistema de archivos estándar
+  volumeMode: Filesystem 
+
+  # MODOS DE ACCESO:
+  # 'ReadWriteOnce' garantiza exclusividad a un único Pod para evitar escrituras concurrentes conflictivas en los logs.
+  accessModes:
+    - ReadWriteOnce

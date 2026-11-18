@@ -1,0 +1,57 @@
+# Parámetros del proyecto. Este archivo es el ÚNICO sitio donde se escriben estos valores;
+# los scripts, skills, reglas y workflows los leen aquí (marcadores `<clave>`).
+version_esquema: 1              # no cambiar: versión del formato de este archivo
+
+proyecto:
+  nombre: mi-proyecto-front     # nombre del proyecto; también se usa en mensajes
+  stack: nextjs                 # no cambiar: identifica este .agents
+
+frontend:
+  llamadas_api: navegador      # navegador | servidor: origen de las llamadas a la API; valores en .agents/config/opciones.yaml
+  framework: nextjs             # no cambiar: es el framework que este .agents soporta
+  version: "16.2.10"            # versión de next en package.json
+  gestor_paquetes: npm          # npm | pnpm | yarn
+  eslint_config: eslint.agent.config.mjs   # ruta, desde la raíz, de la config de ESLint del gate
+  notificaciones: react-toastify   # react-toastify | ninguna: librería para avisos en pantalla; valores válidos en .agents/config/opciones.yaml
+
+sonarqube:
+  url: http://localhost:9000    # servidor SonarQube; la variable SONARQUBE_URL tiene prioridad
+  project_key: mi-proyecto-front   # sonar.projectKey del proyecto en el servidor
+
+mcp:
+  sonarqube: sonarqube            # nombre con el que el servidor MCP de SonarQube está registrado en tus herramientas
+
+integraciones:
+  gestion_usuarios: ninguna     # ninguna | organizaciones | aplicacion: gestión de perfiles con Clerk; recomendado ninguna
+  autenticacion: clerk          # ninguna | clerk
+  variables_autenticacion: [NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY, CLERK_SECRET_KEY, NEXT_PUBLIC_CLERK_SIGN_IN_URL, NEXT_PUBLIC_CLERK_SIGN_UP_URL]   # solo NOMBRES; se usan con autenticacion clerk, no con ninguna  # requerida_con: integraciones.autenticacion=clerk
+
+herramientas:
+  graphify: true                # false = este proyecto no usa grafo de código
+
+git:
+  rama_base: null               # null = HEAD; o referencia de rama para comparar
+
+api_error:
+  campo_mensaje: message       # campo del cuerpo de error con el texto para el usuario
+  campo_codigo: null           # campo del código de negocio, o null si la API no lo manda
+
+nomenclatura:
+  controlador_interfaz: "{Entidad}ControllerInterface"  # patrón de controlador_interfaz; conserva el comodín {Entidad}; recomendado {Entidad}ControllerInterface
+  controlador_implementacion: "{Entidad}Controller"  # patrón de controlador_implementacion; conserva el comodín {Entidad}; recomendado {Entidad}Controller
+  servicio_interfaz: "{Entidad}Service"  # patrón de servicio_interfaz; conserva el comodín {Entidad}; recomendado {Entidad}Service
+  servicio_implementacion: "{Entidad}ServiceImpl"  # patrón de servicio_implementacion; conserva el comodín {Entidad}; recomendado {Entidad}ServiceImpl
+  repositorio_interfaz: "{Entidad}ApiRepository"  # patrón de repositorio_interfaz; conserva el comodín {Entidad}; recomendado {Entidad}ApiRepository
+  repositorio_implementacion: "{Entidad}ApiRepositoryImpl"  # patrón de repositorio_implementacion; conserva el comodín {Entidad}; recomendado {Entidad}ApiRepositoryImpl
+  modelo: "{Entidad}Model"  # patrón de modelo; conserva el comodín {Entidad}; recomendado {Entidad}Model
+  request: "{Entidad}Request"  # patrón de request; conserva el comodín {Entidad}; recomendado {Entidad}Request
+  response: "{Entidad}Response"  # patrón de response; conserva el comodín {Entidad}; recomendado {Entidad}Response
+  archivo_seccion_ui: "{nombre}-section.tsx"  # patrón de archivo_seccion_ui; conserva el comodín {nombre}; recomendado {nombre}-section.tsx
+
+documentacion:  # obligatorio: configura Open Notebook antes de trabajar
+  url_api: http://localhost:5055  # Dirección HTTP(S) de la API de Open Notebook, sin credenciales ni parámetros.
+  variable_password: null  # Nombre de la variable de entorno de la contraseña, o null si no se usa contraseña; nunca su valor.
+  modelo_chat: null  # ID del modelo de chat configurado en Open Notebook; null usa su predeterminado.
+  modelo_contexto_grande: null  # ID del modelo para contexto grande, o null; no se cambia el modelo global.
+  modelo_transformacion: null  # ID del modelo de transformaciones, o null para su predeterminado.
+  timeout_chat: 120  # segundos de espera de chat/execute y aplicación de transformaciones (1-3600); sin reintentos tras timeout o fallo del servidor

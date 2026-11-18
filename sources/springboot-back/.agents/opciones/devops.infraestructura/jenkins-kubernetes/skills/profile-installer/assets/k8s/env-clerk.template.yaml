@@ -1,0 +1,19 @@
+# si-archivo integraciones.gestion_usuarios=organizaciones|aplicacion
+# Integrar estas entradas en env del container de este servicio únicamente.
+- name: CLERK_SECRET_KEY
+  valueFrom:
+    secretKeyRef:
+      name: __BASE__-__ENTORNO__-service-db-secret
+      key: CLERK_SECRET_KEY
+- name: CLERK_WEBHOOK_SIGNING_SECRET
+  valueFrom:
+    secretKeyRef:
+      name: __BASE__-__ENTORNO__-service-db-secret
+      key: CLERK_WEBHOOK_SIGNING_SECRET
+# si integraciones.gestion_usuarios=organizaciones
+- name: CLERK_DEFAULT_INVITER_USER_ID
+  valueFrom:
+    secretKeyRef:
+      name: __BASE__-__ENTORNO__-service-db-secret
+      key: CLERK_DEFAULT_INVITER_USER_ID
+# fin

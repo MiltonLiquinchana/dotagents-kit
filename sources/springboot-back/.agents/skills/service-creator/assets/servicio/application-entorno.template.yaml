@@ -1,0 +1,16 @@
+# si devops.infraestructura=jenkins-kubernetes
+# Configuración del perfil __ENTORNO__ de __NOMBRE__. Nombres de variables de entorno
+# IGUALES a las claves del secret de Kubernetes. Sin valor de respaldo: si falta una
+# variable, el servicio arranca con un error que la nombra.
+# si devops.infraestructura=ninguna
+# Configuración del perfil __ENTORNO__ de __NOMBRE__. Nombres de variables de entorno
+# sin valor de respaldo: si falta una variable, el servicio arranca con un error que la nombra.
+# fin
+spring:
+  application:
+    name: __NOMBRE__-__ENTORNO__
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://${DB_HOST___ENTORNO_MAYUS__}:${DB_PORT___ENTORNO_MAYUS__}/${DB_NAME___ENTORNO_MAYUS__}
+    username: ${USER_NAME_DB___ENTORNO_MAYUS__}
+    password: ${PASSWORD_DB___ENTORNO_MAYUS__}

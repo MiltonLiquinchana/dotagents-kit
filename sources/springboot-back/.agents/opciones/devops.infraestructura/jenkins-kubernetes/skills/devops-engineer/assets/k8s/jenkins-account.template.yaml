@@ -1,0 +1,135 @@
+# permisos del pipeline para desplegar; el usuario añade o quita permisos según su clúster
+# ==============================================================================
+# CONFIGURACIÓN RBAC PARA EL PLUGIN DE JENKINS KUBERNETES
+# Permite a los agentes y pipelines de Jenkins desplegar en el clúster
+# ==============================================================================
+
+# ==============================================================================
+# 1. SERVICE ACCOUNT (Cuenta de Servicio)
+# ==============================================================================
+# Define la identidad que usará Jenkins para interactuar con la API de Kubernetes
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: jenkins                    # Nombre único de la cuenta de servicio
+  namespace: default               # Namespace por defecto para la cuenta
+# ==============================================================================
+# 2. ROLE - PERMISOS EN EL NAMESPACE DEFAULT
+# ==============================================================================
+# Define las operaciones y recursos permitidos localmente en el namespace "default"
+---
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: jenkins                    # Nombre identificativo del rol local
+  namespace: default               # Ámbito local del rol
+rules:
+# --- Gestión de Pods y Servicios ---
+- apiGroups: [""]                  # Grupo de API base o Core (Pods, Services, PVCs, etc.)
+  resources: ["pods","services"]   # Permite interactuar con pods y servicios
+  verbs: ["create","delete","get","list","patch","update","watch"]
+
+# --- Gestión de Deployments ---
+- apiGroups: ["apps"]              # Grupo de API Apps para cargas de trabajo
+  resources: ["deployments"]       # Permite desplegar y actualizar réplicas de microservicios
+  verbs: ["create","delete","get","list","patch","update","watch"]
+
+# --- Ejecución de comandos en Pods (Acceso a Terminal) ---
+- apiGroups: [""]
+  resources: ["pods/exec"]          # Permite la ejecución de comandos interactivos en los contenedores
+  verbs: ["create","delete","get","list","patch","update","watch"]
+
+# --- Lectura de Logs ---
+- apiGroups: [""]
+  resources: ["pods/log"]           # Requerido para capturar la salida estándar del microservicio en Jenkins
+  verbs: ["get","list","watch"]     # Permisos orientados exclusivamente a la lectura
+
+# --- Acceso Seguro a Secrets ---
+- apiGroups: [""]
+  resources: ["secrets"]            # Acceso a secretos de desarrollo (e.g. credenciales de BD)
+  verbs: ["get"]                    # Permiso restrictivo de solo lectura (Principio de Menor Privilegio)
+
+# --- Gestión de Reclamaciones de Volúmenes ---
+- apiGroups: [""]
+  resources: ["persistentvolumeclaims"]  # Permite aprovisionar volúmenes locales persistentes
+  verbs: ["create","delete","get","list","patch","update","watch"]
+
+# ==============================================================================
+# 3. ROLE BINDING (Vinculación de Rol Local)
+# ==============================================================================
+# Conecta la cuenta de servicio 'jenkins' con los permisos locales definidos arriba
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: jenkins                    # Nombre de la vinculación local
+  namespace: default               # Namespace donde se aplican estos permisos
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role                       # Referencia a un rol local
+  name: jenkins                    # Nombre del rol local a vincular
+subjects:
+- kind: ServiceAccount             # Tipo de sujeto a asociar
+  name: jenkins                    # Nombre de la cuenta de servicio
+
+# ==============================================================================
+# 4. CLUSTER ROLE BINDING (Vinculación a Nivel de Clúster)
+# ==============================================================================
+# Asocia la cuenta de servicio a permisos globales fuera del alcance de un único namespace
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: jenkins-crb                # Nombre único del binding a nivel de clúster
+subjects:
+- kind: ServiceAccount
+  namespace: default               # Namespace de origen de la cuenta de servicio
+  name: jenkins                    # Cuenta de servicio autorizada
+roleRef:
+  kind: ClusterRole                # Referencia a un ClusterRole global
+  name: jenkinsclusterrole         # Nombre del rol global definido abajo
+  apiGroup: rbac.authorization.k8s.io
+
+# ==============================================================================
+# 5. CLUSTER ROLE (Rol Global)
+# ==============================================================================
+# Define permisos globales aplicables a todo el clúster (e.g. gestión de namespaces y PVs)
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: jenkinsclusterrole         # Identificador del rol global
+                                   # Los ClusterRoles no tienen namespace asignado
+rules:
+# --- Gestión de Volúmenes Físicos (Persistent Volumes) ---
+- apiGroups: [""]
+  resources: ["persistentvolumes"] # Recursos de almacenamiento globales
+  verbs: ["create","delete","get","list","patch","update","watch"]
+
+# --- Consulta y Monitoreo de Namespaces ---
+# Requerido por Jenkins Kubernetes Plugin para la validación de red y evitar errores 403 Forbidden
+- apiGroups: [""]
+  resources: ["namespaces"]        # Permite listar e inspeccionar Namespaces en el clúster
+  verbs: ["get","list","watch"]    # Limitado a lectura para prevenir manipulaciones accidentales de otros namespaces
+
+# --- Estado del Clúster y Nodos ---
+- apiGroups: [""]
+  resources: ["nodes"]             # Permite obtener información de estado de los nodos del clúster (e.g. CPU/RAM global)
+  verbs: ["get","list","watch"]    # Permiso pasivo de solo lectura
+
+- nonResourceURLs: ["/"]
+  verbs: ["get"]                   # Requerido por Jenkins para comprobar la conectividad del API Server
+
+# ==============================================================================
+# RESUMEN SRE DE PERMISOS OTORGADOS A JENKINS:
+# ==============================================================================
+# EN NAMESPACE "default":
+# - CRUD completo sobre Pods, Services, Deployments y PVCs
+# - Ejecución interactiva y lectura de logs en tiempo real
+# - Lectura exclusiva de Secrets
+#
+# A NIVEL DE CLÚSTER:
+# - CRUD completo sobre Persistent Volumes (PVs)
+# - Monitoreo pasivo y listado de Namespaces y Nodos
+# =========================================================================================================================

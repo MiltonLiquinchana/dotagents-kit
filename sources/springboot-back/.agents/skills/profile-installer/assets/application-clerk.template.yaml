@@ -1,0 +1,9 @@
+# si-archivo integraciones.gestion_usuarios=organizaciones|aplicacion
+# Se integra en application.yaml sin duplicar la raíz clerk.
+clerk:
+  issuer-uri: <integraciones.clerk_issuer_uri>
+  secret-key: ${CLERK_SECRET_KEY}
+  webhook-signing-secret: ${CLERK_WEBHOOK_SIGNING_SECRET}
+# si integraciones.gestion_usuarios=organizaciones
+  default-inviter-user-id: ${CLERK_DEFAULT_INVITER_USER_ID}
+# fin

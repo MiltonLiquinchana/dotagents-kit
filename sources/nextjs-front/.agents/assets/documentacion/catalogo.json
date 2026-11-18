@@ -1,0 +1,143 @@
+{
+  "tecnologias": {
+    "nextjs": "Next.js",
+    "react": "React",
+    "typescript": "TypeScript"
+  },
+  "fuentes": [
+    {
+      "id": "F1",
+      "tecnologia": "nextjs",
+      "tipo": "referencia",
+      "url": "https://raw.githubusercontent.com/vercel/next.js/v{version}/docs/{ruta}.mdx",
+      "secciones": "App Router: layouts, componentes servidor/cliente, datos, caché, errores; Actions o Route Handlers según uso",
+      "estado": "por verificar"
+    },
+    {
+      "id": "F2",
+      "tecnologia": "nextjs",
+      "tipo": "notas",
+      "url": "https://github.com/vercel/next.js/releases/tag/v{version}",
+      "secciones": "Notas de publicación y obsolescencias",
+      "estado": "por verificar"
+    },
+    {
+      "id": "F3",
+      "tecnologia": "nextjs",
+      "tipo": "migracion",
+      "url": "https://raw.githubusercontent.com/vercel/next.js/v{version}/docs/{ruta-migracion}.mdx",
+      "secciones": "Guía de actualización en el tag; ruta por resolver",
+      "estado": "por verificar"
+    },
+    {
+      "id": "F4",
+      "tecnologia": "react",
+      "tipo": "notas",
+      "url": "https://github.com/facebook/react/releases/tag/v{version}",
+      "secciones": "Notas exactas de React",
+      "estado": "por verificar"
+    },
+    {
+      "id": "F5",
+      "tecnologia": "react",
+      "tipo": "notas",
+      "url": "https://raw.githubusercontent.com/facebook/react/v{version}/CHANGELOG.md",
+      "secciones": "Solo sección de la versión esperada",
+      "estado": "por verificar"
+    },
+    {
+      "id": "F6",
+      "tecnologia": "react",
+      "tipo": "referencia",
+      "url": "https://raw.githubusercontent.com/facebook/react/v{version}/packages/{ruta}",
+      "secciones": "API puntual; no sustituye una guía explicativa completa",
+      "estado": "por verificar"
+    },
+    {
+      "id": "F7",
+      "tecnologia": "typescript",
+      "tipo": "notas",
+      "url": "https://github.com/microsoft/TypeScript/releases/tag/v{version}",
+      "secciones": "Notas exactas de TypeScript",
+      "estado": "por verificar"
+    },
+    {
+      "id": "F8",
+      "tecnologia": "typescript",
+      "tipo": "referencia",
+      "url": "https://raw.githubusercontent.com/microsoft/TypeScript-Website/{tag}/packages/documentation/copy/en/release-notes/TypeScript%20{serie}.md",
+      "secciones": "Funciones de la serie; comprobar el tag oficial y el alcance del texto",
+      "estado": "por verificar"
+    }
+  ],
+  "detectores": [
+    {
+      "tecnologia": "nextjs",
+      "tipo": "dependencia",
+      "identificador": "next"
+    },
+    {
+      "tecnologia": "react",
+      "tipo": "dependencia",
+      "identificador": "react"
+    },
+    {
+      "tecnologia": "react",
+      "tipo": "dependencia",
+      "identificador": "react-dom"
+    },
+    {
+      "tecnologia": "typescript",
+      "tipo": "dependencia",
+      "identificador": "typescript"
+    }
+  ],
+  "dominios_oficiales": {
+    "nextjs": [
+      {
+        "host": "github.com",
+        "ruta": "/vercel/next.js/"
+      },
+      {
+        "host": "raw.githubusercontent.com",
+        "ruta": "/vercel/next.js/"
+      },
+      {
+        "host": "nextjs.org",
+        "ruta": "/"
+      }
+    ],
+    "react": [
+      {
+        "host": "github.com",
+        "ruta": "/facebook/react/"
+      },
+      {
+        "host": "raw.githubusercontent.com",
+        "ruta": "/facebook/react/"
+      },
+      {
+        "host": "react.dev",
+        "ruta": "/"
+      }
+    ],
+    "typescript": [
+      {
+        "host": "github.com",
+        "ruta": "/microsoft/TypeScript/"
+      },
+      {
+        "host": "raw.githubusercontent.com",
+        "ruta": "/microsoft/TypeScript/"
+      },
+      {
+        "host": "github.com",
+        "ruta": "/microsoft/TypeScript-Website/"
+      },
+      {
+        "host": "raw.githubusercontent.com",
+        "ruta": "/microsoft/TypeScript-Website/"
+      }
+    ]
+  }
+}

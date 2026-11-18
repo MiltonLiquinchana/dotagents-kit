@@ -1,0 +1,3 @@
+# Valores permitidos de las marcas `si clave=valor` de este .agents. Solo se declaran aquí.
+# Una clave nueva va aquí y solo aquí, con su lista de valores.
+integraciones.gestion_usuarios: [ninguna, organizaciones, aplicacion]

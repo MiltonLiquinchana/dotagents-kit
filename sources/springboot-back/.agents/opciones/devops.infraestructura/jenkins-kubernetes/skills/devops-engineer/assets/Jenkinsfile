@@ -1,0 +1,1217 @@
+import org.jenkinsci.plugins.pipeline.modeldefinition.Utils
+import java.util.Collections
+import groovy.transform.Field
+
+// Tiempo máximo por despliegue (rollout). Startup probe: 60 s + 18×10 s = 240 s (timeoutSeconds: 10),
+// más descarga de imagen (imagePullPolicy: Always), readiness y RollingUpdate (maxSurge 1, maxUnavailable 1).
+// 600 s da margen razonable hasta ~4 réplicas por servicio; los servicios se despliegan en serie (total ≈ servicios × N).
+@Field final int DESPLIEGUE_TIMEOUT = 600
+@Field final String NODO_GENERAL = '<devops.nodos.general>'
+@Field final String NODO_COMPILACION = '<devops.nodos.compilacion>'
+@Field final String NODO_DOCKER = '<devops.nodos.docker>'
+
+pipeline {
+    // ====================================
+    // CONFIGURACIÓN DEL AGENTE PRINCIPAL
+    // Define el nodo donde se ejecutará el pipeline general.
+    // ====================================
+    agent {
+        label "${NODO_GENERAL}"
+    }
+
+    // Reconstrucción manual; los filtros y condiciones del entorno siguen vigentes.
+    parameters {
+        booleanParam(name: 'CONSTRUIR_TODO', defaultValue: false,
+            description: 'Revisa todos los servicios con los filtros del pipeline: en construir compila y publica imágenes con número nuevo; en promover vuelve a promover; despliega si el entorno lo habilita; en feature/* analiza todos en Sonar.')
+    }
+
+    // Variables transversales usadas por todos los stages.
+    environment {
+        PIPELINE_BRANCH = "${env.BRANCH_NAME}"  // Rama actual para uso en todo el pipeline
+        PIPELINE_JAVA_HOME = "<devops.java_home_nodo>" // ruta común del JDK en los nodos que compilan
+    }
+    // ====================================
+    // ETAPAS DEL PIPELINE
+    // ====================================
+    stages {
+        // ====================================
+        // STAGE 1: CHECKOUT DEL CÓDIGO FUENTE
+        // Descarga el código del repositorio y configura variables base.
+        // ====================================
+        stage('Checkout') {
+            steps {
+                script {
+                    // Registrar el nombre del stage para manejo de errores
+                    env.CURRENT_STAGE = "${STAGE_NAME}"
+
+                    echo '🚀 Iniciando checkout del código fuente'
+                    echo "🌿 Rama actual: ${env.PIPELINE_BRANCH}"
+                    echo "☕ Java Home configurado: ${env.PIPELINE_JAVA_HOME}"
+
+                    def entorno = resolverEntorno(env.PIPELINE_BRANCH)
+                    env.PIPELINE_CARPETA = entorno ? entorno.carpeta : ''
+                    env.PIPELINE_SUFIJO = entorno ? entorno.sufijo : ''
+                    env.PIPELINE_KUBECONFIG = entorno ? entorno.credencial_kubeconfig : ''
+                    env.PIPELINE_MODO_IMAGEN = entorno ? entorno.imagen : 'ninguna'
+                    env.PIPELINE_DESPLEGAR = entorno && entorno.desplegar ? 'true' : 'false'
+                    env.PIPELINE_COMMIT = sh(script: 'git rev-parse HEAD', returnStdout: true).trim()
+                    env.PIPELINE_CONSTRUIDOS = ''
+                    env.PIPELINE_DESPLEGADOS = ''
+                    env.PIPELINE_COMPILADOS = ''
+                    env.PIPELINE_ANALIZADOS = ''
+                    // El checkout se hace automáticamente en declarative pipeline
+                    // pero podemos añadir validaciones adicionales si es necesario
+                    echo '✅ Código descargado exitosamente'
+                }
+            }
+        }
+
+        // ====================================
+        // STAGE 2: BUILD DEL MICROSERVICIO
+        // Orquesta la compilación en paralelo de todos los microservicios
+        // que hayan detectado cambios en sus respectivos directorios.
+        // ====================================
+        stage('Build Microservicies') {
+            steps {
+                script {
+                    def services = getServices()
+                    // Registrar el nombre del stage para manejo de errores
+                    env.CURRENT_STAGE = "${STAGE_NAME}"
+                    generarStagesBuild(services)
+                }
+            }
+        }
+        // ====================================
+        // STAGE 3: ANÁLISIS SONARQUBE
+        // Evalúa la calidad del código mediante escaneo estático.
+        // ====================================
+        // Este stage solo se ejecuta en ramas de desarrollo 'feature/*'
+        stage('SonarQube Analysis') {
+            when {
+                allOf {
+                    // Condición: solo ejecutar en ramas que empiecen con 'feature/'
+                    branch 'feature/*'
+                }
+            }
+            steps {
+                script {
+                    // Configurar variables del servicio usando objeto svc
+                    def services = getServices()
+                    env.CURRENT_STAGE = "${STAGE_NAME}"
+
+                    // Llamada a la función de build del microservicio
+                    generarStagesSonarQubeAnalysis(services)
+                }
+            }
+        }
+
+        // ====================================
+        // STAGE 5: BUILD DE IMAGEN DOCKER Y DEPLOY
+        // Genera las imágenes de Docker basadas en los JAR compilados
+        // y publica las imágenes en el registro (Docker Hub).
+        //====================================
+        // Stage condicionado por el entorno resuelto una vez en Checkout.
+        stage('Build Docker Images') {
+            when {
+                expression { env.PIPELINE_CARPETA && env.PIPELINE_MODO_IMAGEN == 'construir' }
+            }
+            steps {
+                script {
+                    // Configurar variables del servicio usando objeto svc
+                    def services = getServices()
+                    env.CURRENT_STAGE = "${STAGE_NAME}"
+                    generarStagesBuildDockerImages(services)
+                }
+            }
+        }
+        // ====================================
+        // STAGE 6: DESPLIEGUE EN KUBERNETES
+        // Actualiza los manifiestos YAML y aplica los despliegues en el cluster.
+        // ====================================
+        // Stage condicionado por el entorno resuelto una vez en Checkout.
+        stage('Deploy Services en Kubernetes') {
+            when {
+                expression { env.PIPELINE_CARPETA && env.PIPELINE_DESPLEGAR == 'true' }
+            }
+            steps {
+                script {
+                    // Configurar variables del servicio usando objeto svc
+                    def services = getServices()
+                    env.CURRENT_STAGE = "${STAGE_NAME}"
+
+                    // Despliegue usando credenciales de Kubernetes
+                    generarStagesDeployKubernetes(services)
+                }
+            }
+        }
+    }
+    // ====================================
+    // MANEJO DE ERRORES Y NOTIFICACIONES
+    // Lógica post-ejecución para alertamiento e integración con Slack.
+    // ====================================
+    post {
+        always {
+            script {
+                def compilados = env.PIPELINE_COMPILADOS?.trim()
+                def analizados = env.PIPELINE_ANALIZADOS?.trim()
+                def construidos = env.PIPELINE_CONSTRUIDOS?.trim()
+                def desplegados = env.PIPELINE_DESPLEGADOS?.trim()
+                def partes = []
+                if (compilados) { partes << "Compilados: ${compilados}" }
+                if (analizados) { partes << "Analizados: ${analizados}" }
+                if (construidos) { partes << "Construidos: ${construidos}" }
+                if (desplegados) { partes << "Desplegados: ${desplegados}" }
+                currentBuild.description = partes ? partes.join('; ') : 'Sin servicios con cambios'
+            }
+        }
+        // Se ejecuta cuando el pipeline falla
+        failure {
+            script {
+                echo "❌ Pipeline falló en el stage: ${env.CURRENT_STAGE}"
+                env.CI_ERROR = "Error en el paso ${env.CURRENT_STAGE ?: 'Unknown stage'}"
+
+                sendSlackNotification('FAILURE')
+            }
+        }
+
+        // Se ejecuta solo cuando el pipeline es exitoso
+        success {
+            script {
+                echo '🎉 Pipeline completado exitosamente'
+
+                sendSlackNotification('SUCCESS')
+            }
+        }
+
+        // OPCIONAL: Para otros casos como UNSTABLE, ABORTED, etc.
+        unstable {
+            script {
+                echo "⚠️ Pipeline inestable en el stage: ${env.CURRENT_STAGE}"
+                env.CI_ERROR = "Pipeline inestable en el paso ${env.CURRENT_STAGE ?: 'Unknown stage'}"
+
+                sendSlackNotification('UNSTABLE')
+            }
+        }
+
+        aborted {
+            script {
+                echo "🛑 Pipeline abortado en el stage: ${env.CURRENT_STAGE}"
+                env.CI_ERROR = "Pipeline abortado en el paso ${env.CURRENT_STAGE ?: 'Unknown stage'}"
+
+                sendSlackNotification('ABORTED')
+            }
+        }
+    }
+}
+
+def registrarResumen(variable, nombre) {
+    def actual = env."${variable}"?.trim()
+    env."${variable}" = actual ? "${actual}, ${nombre}" : nombre
+}
+
+/**
+ * Genera stages dinámicos y en paralelo para el despliegue en Kubernetes.
+ * Solo procede con los servicios que han sido marcados con cambios relevantes.
+ * 
+ * @param services Mapa con la configuración de los microservicios.
+ */
+def generarStagesDeployKubernetes(Map services) {
+    def skipped = []
+    services.each { key, svc ->
+        def existChange = shouldDeploy(svc)
+        stage("Deploy ${svc.displayName} en Kubernetes") {
+            env.CURRENT_STAGE = "${STAGE_NAME}"
+            if ( existChange != true) {
+                echo "⏭️ No hay cambios en ${svc.displayName}"
+                Utils.markStageSkippedForConditional("Deploy ${svc.displayName} en Kubernetes")
+                skipped << svc.displayName
+                return
+            }
+
+            echo "☸️ Iniciando despliegue en Kubernetes para ${svc.displayName}"
+            echo "🚀 Aplicando manifiestos de Kubernetes desde: devops/${env.PIPELINE_CARPETA}/${svc.directory}"
+            // Llamada a la función de análisis
+            deployKubernetes(svc.name, svc.directory)
+            registrarResumen('PIPELINE_DESPLEGADOS', svc.name)
+        }
+    }
+    echo "✅ Despliegue en Kubernetes completado exitosamente. ⏭️ Omitidos: ${skipped.join(', ')}"
+}
+
+/**
+ * Genera stages paralelos para empaquetar en imágenes Docker y subirlas al Registry.
+ * Verifica previamente la existencia de cambios en los ficheros incluyendo el Dockerfile.
+ * 
+ * @param services Mapa con la configuración de los microservicios.
+ */
+def generarStagesBuildDockerImages(Map services) {
+    def skipped = []
+    def construidos = []
+    def branches = services.collectEntries { key, svc ->
+        def existChange = hasDirectoryChanges(svc.directory, ['.java', '.gradle', '.yaml'], ['Dockerfile'])
+        if (existChange != true) { skipped << svc.displayName }
+        ["Build Docker Image for ${svc.displayName}": {
+            env.CURRENT_STAGE = "${STAGE_NAME}"
+            if ( existChange != true) {
+                    echo "⏭️ No hay cambios en ${svc.displayName}"
+                    Utils.markStageSkippedForConditional("Build Docker Image for ${svc.displayName}")
+                    return
+            }
+            echo "🐳 Iniciando build de imagen Docker para ${svc.displayName}"
+
+            // Llamada a la función de build de Docker
+            buildDockerImage(svc.name, svc.directory)
+            construidos << svc.name
+        }]
+    }
+    try {
+        parallel branches
+    } finally {
+        construidos.each { registrarResumen('PIPELINE_CONSTRUIDOS', it) }
+    }
+
+    echo "✅ Build Docker Images Completado. ⏭️ Omitidos: ${skipped.join(', ')}"
+}
+
+/**
+ * Genera de forma dinámica los stages dedicados al escaneo estático del código (SonarQube)
+ * y el control de calidad estricto (Quality Gate).
+ * 
+ * @param services Mapa con la configuración de los microservicios.
+ */
+def generarStagesSonarQubeAnalysis(Map services) {
+    def skipped = []
+    services.each { key, svc ->
+        def existChange = hasDirectoryChanges(svc.directory, ['.java', '.gradle', '.yaml'])
+        stage("SonarQube Analysis for ${svc.displayName}") {
+            env.CURRENT_STAGE = "${STAGE_NAME}"
+            if ( existChange != true) {
+                echo "⏭️ No hay cambios en ${svc.displayName}"
+                Utils.markStageSkippedForConditional("SonarQube Analysis for ${svc.displayName}")
+                skipped << svc.displayName
+                return
+            }
+
+            echo "🔍 Iniciando análisis SonarQube para ${svc.displayName}"
+            // Llamada a la función de análisis
+            analyzeMicroservice(svc.name, svc.directory)
+            registrarResumen('PIPELINE_ANALIZADOS', svc.name)
+        }
+
+        stage("Quality Gate for ${svc.displayName}") {
+            if (existChange != true) {
+                echo "⏭️ No hay cambios en ${svc.displayName}"
+                Utils.markStageSkippedForConditional("Quality Gate for ${svc.displayName}")
+                return
+            }
+
+            echo "🔍 Quality Gate para ${svc.displayName}"
+
+            // Llamada a la función de quality gate
+            qualityGateMicroservice(svc.name)
+        }
+    }
+    echo "✅ Analysis completados. ⏭️ Omitidos: ${skipped.join(', ')}"
+}
+
+/**
+ * Orquesta la creación de etapas de compilación Java en paralelo.
+ * Solo evalúa aquellos proyectos que tienen cambios reales en archivos clave.
+ * 
+ * @param services Mapa con la configuración de los microservicios.
+ */
+def generarStagesBuild(Map services) {
+    def skipped = []
+    def compilados = []
+    def branches = services.collectEntries { key, svc ->
+        def existChange = hasDirectoryChanges(svc.directory, ['.java', '.gradle', '.yaml'])
+        if (existChange != true) { skipped << svc.displayName }
+
+        ["Build ${svc.displayName}": {
+            env.CURRENT_STAGE = "${STAGE_NAME}"
+            if (existChange != true) {
+                echo "⏭️ No hay cambios en ${svc.displayName}"
+                Utils.markStageSkippedForConditional("Build ${svc.displayName}")
+                return
+            }
+            echo "🔨 Iniciando build del ${svc.displayName}"
+            buildMicroservice(svc.name, svc.directory)
+            compilados << svc.name
+    }]
+    }
+    try {
+        parallel branches
+    } finally {
+        compilados.each { registrarResumen('PIPELINE_COMPILADOS', it) }
+    }
+    echo "✅ Builds completados. ⏭️ Omitidos: ${skipped.join(', ')}"
+}
+
+/**
+ * Valida de forma estructurada si un microservicio requiere ser empaquetado y desplegado,
+ * revisando tanto el código fuente como los manifiestos de Kubernetes en la rama correspondiente.
+ * 
+ * @param svc El objeto con la configuración del servicio actual.
+ * @return true si existen cambios que ameriten despliegue, false en caso contrario.
+ */
+def shouldDeploy(svc) {
+    return (hasDirectoryChanges(svc.directory, ['.java', '.gradle', '.yaml'], ['Dockerfile']) ||
+        hasDirectoryChanges("devops/${env.PIPELINE_CARPETA}/${svc.directory}", ['.yaml']))
+}
+
+// ============================================================================
+// FUNCIONES AUXILIARES DEL PIPELINE
+// Lógica encapsulada para mantener DRY el archivo de configuración.
+// ============================================================================
+
+/**
+ * Centraliza la lógica de actualización y aplicación de recursos al cluster Kubernetes.
+ * 
+ * @param serviceName Nombre único del microservicio
+ * @param serviceDir Directorio raíz del servicio para el contexto de ejecución
+ */
+def deployKubernetes(serviceName, serviceDir) {
+    def construirAhora = env.PIPELINE_MODO_IMAGEN == 'construir' &&
+        hasDirectoryChanges(serviceDir, ['.java', '.gradle', '.yaml'], ['Dockerfile'])
+    def imageTag
+    if (construirAhora) {
+        // Stash del build actual: nunca buscar "el último" para una imagen recién construida.
+        unstash "${serviceName}-image-tag"
+        imageTag = readFile(".pipeline-tags/${serviceName}.txt").trim()
+        validarImagenParaServicio(imageTag, serviceDir)
+    } else if (env.PIPELINE_MODO_IMAGEN == 'construir') {
+        // Migración solo en el constructor y sin imagen construida en este build.
+        comprobarHistorial()
+        def tags = getLatestImageTags(serviceName, '^[0-9]+\\.[0-9]+\\.[0-9]+(-[0-9a-f]{7,12})?$', 0)
+        def conCommit = []
+        def historico = null
+        for (def tag in tags) {
+            if (tag.matches('[0-9]+\\.[0-9]+\\.[0-9]+-[0-9a-f]{7,12}')) conCommit.add(tag)
+            else if (historico == null) historico = tag // Catálogo ya ordenado por número.
+        }
+        if (conCommit) {
+            imageTag = seleccionarImagenPromocion(serviceName, serviceDir, conCommit)
+        } else if (historico != null) {
+            imageTag = historico
+            echo "MIGRACION: se despliega el tag histórico ${imageTag}; la próxima imagen llevará commit"
+        } else {
+            error('SIN_IMAGEN_PROMOVIBLE: no hay imagen con commit ni tag histórico para migrar; lanza "Build with Parameters" con CONSTRUIR_TODO=true.')
+        }
+    } else {
+        // Promover nunca permite tags históricos, tampoco si solo cambian manifiestos.
+        imageTag = seleccionarImagenPromocion(serviceName, serviceDir)
+    }
+    updateDeploymentTag(serviceName, serviceDir, imageTag)
+    def rutaDeployment = rutaDeploymentServicio(serviceName, serviceDir)
+    withCredentials([file(credentialsId: env.PIPELINE_KUBECONFIG, variable: 'KUBECONFIG')]) {
+        sh "kubectl apply -f ./devops/${env.PIPELINE_CARPETA}/${serviceDir}"
+        // Supuesto: el archivo de despliegue contiene solo el Deployment (como la plantilla).
+        def rc = sh(script: "kubectl rollout status -f ${rutaDeployment} --timeout=${DESPLIEGUE_TIMEOUT}s", returnStatus: true)
+        if (rc != 0) {
+            def serviceBaseName = serviceName.endsWith('-service') ?
+                serviceName.substring(0, serviceName.lastIndexOf('-service')) :
+                serviceName
+            sh "kubectl get pods -l app=${serviceBaseName}-${env.PIPELINE_SUFIJO},tier=application -o wide || true"
+            sh "kubectl describe -f ${rutaDeployment} || true"
+            error("DESPLIEGUE_NO_LISTO: ${serviceName} en ${env.PIPELINE_CARPETA} no quedó listo en ${DESPLIEGUE_TIMEOUT} s")
+        }
+    }
+    echo '✅ Despliegue en Kubernetes completado exitosamente'
+}
+/**
+ * Función para enviar notificaciones a Slack informando del estado final.
+ * Construye dinámicamente el mensaje basado en el resultado (éxito o fallo) del pipeline.
+ */
+def sendSlackNotification(String estado) {
+    def slackChannel = '<devops.slack_canal>'
+    if (!slackChannel?.trim()) {
+        return
+    }
+    echo "📬 Enviando notificación de Slack (${estado})"
+    def description_error = estado == 'SUCCESS' ? '' : "*${env.CI_ERROR ?: 'Unknown error'}*"
+    def color = estado == 'SUCCESS' ? 'good' :
+        (estado == 'FAILURE' ? 'danger' : (estado == 'UNSTABLE' ? 'warning' : '#808080'))
+    def status = "*${estado}*"
+
+    // Construimos el mensaje de resumen de la construcción
+    def buildSummary = """
+        Job: ${env.JOB_NAME}
+        Status: ${status}
+        Branch: ${env.BRANCH_NAME}
+        Error description: ${description_error}
+        Build Report: ${env.BUILD_URL}console
+    """.stripIndent()
+
+    // Enviamos el mensaje a Slack
+    slackSend(
+        color: color,
+        message: buildSummary,
+        channel: slackChannel
+    )
+}
+
+/**
+ * Valida proactivamente que exista al menos un JAR compilado para evitar builds de Docker vacíos.
+ * 
+ * @param serviceName Identificador del servicio a evaluar.
+ * @return true si el JAR fue encontrado en la carpeta de build.
+ */
+def validateJarExist(serviceName) {
+    // Validar que el JAR fue creado
+    def jarFile = sh(
+            script: "find build/libs -name '${serviceName}-*.jar' ! -name '*-plain.jar' | head -1",
+            returnStdout: true
+        ).trim()
+
+    if (!jarFile) {
+        echo '📦 JAR no encontrado, ejecutando build del código Java antes de hacer build de la imagen'
+        return false
+    }
+        else {
+        echo "✅ JAR encontrado: ${jarFile}"
+        return true
+        }
+}
+/**
+ * Función para construir imágenes Docker de microservicios y publicarlas en el Registry.
+ * Maneja internamente el uso de stashes de artefactos y comprobación de existencia.
+ * NOTA: La validación de rama se maneja a nivel de stage con 'when', no aquí.
+ * 
+ * @param serviceName Nombre del servicio a construir (ej: example-service)
+ * @param serviceDir Directorio donde se encuentra el servicio en el repositorio
+ */
+def buildDockerImage(serviceName, serviceDir) {
+    echo "🐳 Iniciando build de ${serviceName} imagen Docker..."
+
+    //Obtenemos el ultimo tag disponible para la imagen y lo incrementamos
+    def imageTag = null
+
+    // Usamos un nodo específico para Docker
+    node(label: NODO_DOCKER) {
+        // Checkout de la misma revisión seleccionada por Jenkins.
+        checkout scm
+        comprobarHistorial()
+        def anterior = getLatestImageTag(serviceName)
+        def base = anterior ? incrementVersion(anterior) : '1.0.0'
+        def corto = sh(script: 'git rev-parse --short=7 HEAD', returnStdout: true).trim()
+        if (!corto.matches('[0-9a-f]{7,12}')) error('TAG_FORMATO: el sha abreviado debe tener entre 7 y 12 hexadecimales.')
+        imageTag = "${base}-${corto}"
+        echo "🏷️ Tag generado: ${imageTag}"
+        echo '✅ Código descargado exitosamente en nodo Docker'
+
+        // Verificamos que existe el directorio del servicio
+        if (!fileExists(serviceDir)) {
+            error "❌ No se encontró el directorio ${serviceDir}"
+            return
+        }
+
+        dir(serviceDir) {
+            // Recuperamos el JAR construido anteriormente
+            boolean compiladoRespaldo = false
+            try {
+                unstash "${serviceName}-jar"
+            } catch (Exception e) {
+                if (!e.getMessage()?.contains('No such saved stash')) throw e
+                buildMicroservice(serviceName, serviceDir)
+                compiladoRespaldo = true
+                unstash "${serviceName}-jar"
+            }
+            echo '📦 Recuperando artefactos del build anterior'
+            sh 'ls -la'  // Listamos contenido para verificar
+
+            // Validar si se ejecutó el build del código java o si es necesario ejecutarlo
+            echo "🔍 Verificando existencia del jar del ${serviceName}"
+
+            // Validar que el JAR fue creado
+            def jarFile = sh(
+                script: "find build/libs -name '${serviceName}-*.jar' ! -name '*-plain.jar' | head -1",
+                returnStdout: true
+            ).trim()
+
+            if (!jarFile) {
+                echo '📦 JAR no encontrado, ejecutando build del código Java antes de hacer build de la imagen'
+                if (compiladoRespaldo) error('JAR_AUSENTE: falló la compilación de respaldo.')
+                buildMicroservice(serviceName, serviceDir)
+                unstash "${serviceName}-jar"
+                if (!validateJarExist(serviceName)) error('JAR_AUSENTE: falló la compilación de respaldo.')
+            }
+            else {
+                echo '✅ JAR encontrado, ejecutando build build de la imagen'
+            }
+
+            // Construimos y publicamos la imagen Docker
+            docker.withRegistry('https://index.docker.io/v1/', 'dockerhub_integration_credentials') {
+                def customImage = docker.build("<devops.registry>/${serviceName}:${imageTag}", '-f Dockerfile --no-cache .')
+                customImage.push()
+                //limpieza de imagen docker después de push
+                sh "docker rmi ${customImage.id}"
+            }
+        }
+        sh 'mkdir -p .pipeline-tags'
+        writeFile file: ".pipeline-tags/${serviceName}.txt", text: imageTag + '\n'
+        stash includes: ".pipeline-tags/${serviceName}.txt", name: "${serviceName}-image-tag"
+    }
+
+    echo '✅ Imagen Docker construida y enviada exitosamente'
+}
+
+/**
+ * Función genérica para compilar microservicios Java empleando Gradle.
+ * Compila el código, ejecuta validaciones base y salva los artefactos
+ * empleando la estrategia `stash` para uso posterior en nodos aislados de Docker.
+ * 
+ * @param serviceName Nombre del servicio a compilar
+ * @param serviceDir Directorio donde se encuentra el servicio
+ */
+def buildMicroservice(serviceName, serviceDir) {
+    node(label: NODO_COMPILACION) {
+        checkout scm
+        echo '✅ Código descargado exitosamente en nodo Docker'
+         // Verificamos que existe el directorio del servicio
+        if (!fileExists(serviceDir)) {
+            error "❌ No se encontró el directorio ${serviceDir}"
+            return
+        }
+        echo "🔨 Compilando ${serviceName}..."
+
+        dir(serviceDir) {
+            // Configuramos el entorno Java y compilamos
+            withEnv(["JAVA_HOME=${env.PIPELINE_JAVA_HOME}", "PATH+JAVA=${env.PIPELINE_JAVA_HOME}/bin"]) {
+                if (sh(script: 'test -x "$JAVA_HOME/bin/javac"', returnStatus: true) != 0) {
+                    error("JAVA_HOME_NODO_INVALIDO: ${env.PIPELINE_JAVA_HOME} sin javac en ${env.NODE_NAME} (${NODO_COMPILACION}); revisa devops.java_home_nodo")
+                }
+                def credBd = '<devops.credencial_bd_pruebas>'
+                def perfilLocal = '<backend.perfil_local>'
+                if (!perfilLocal?.trim()) { perfilLocal = 'feature' }
+                def P = perfilLocal.toUpperCase()
+                if (credBd?.trim()) {
+                    def missing = sh(script: """
+for v in DB_HOST_${P} DB_PORT_${P} DB_NAME_${P}; do
+  [ -n "\$(printenv "\$v" | tr -d '[:space:]')" ] || echo "\$v"
+done
+""", returnStdout: true).trim()
+                    if (missing) {
+                        def faltan = missing.split('\\s+').join(', ')
+                        error("BD_PRUEBAS_INCOMPLETA: faltan ${faltan} en el nodo ${env.NODE_NAME} (${NODO_COMPILACION}); defínelas y reconecta el agente")
+                    }
+                    withCredentials([usernamePassword(credentialsId: credBd, usernameVariable: "USER_NAME_DB_${P}", passwordVariable: "PASSWORD_DB_${P}")]) {
+                        sh './gradlew clean build'
+                    }
+                } else {
+                    sh './gradlew clean build'
+                }
+            }
+            // Validar que el JAR fue creado
+            def jarFile = sh(
+                script: "find build/libs -name '${serviceName}-*.jar' ! -name '*-plain.jar' | head -1",
+                returnStdout: true
+            ).trim()
+
+            if (!jarFile) {
+                error "❌ No se encontró el JAR compilado para ${serviceName}"
+            }
+
+            // Guardamos el JAR compilado para uso en otros nodos
+            stash includes: jarFile, name: "${serviceName}-jar"
+        }
+
+    }
+
+    echo "✅ Compilación de ${serviceName} completada exitosamente"
+}
+
+/**
+ * Función genérica para integrar y analizar los microservicios con SonarQube.
+ * NOTA: La validación de rama se maneja a nivel de stage con 'when', no aquí.
+ * 
+ * @param serviceName Nombre del servicio a analizar
+ * @param serviceDir Directorio raíz donde reside la base de código del servicio
+ */
+def analyzeMicroservice(serviceName, serviceDir) {
+    node(label: NODO_COMPILACION) {
+        // Descargar el código fuente en el espacio de trabajo del nodo Docker
+        checkout scm
+        echo "✅ Código descargado exitosamente en nodo Docker para análisis de ${serviceName}"
+
+        // Verificamos que existe el directorio del servicio
+        if (!fileExists(serviceDir)) {
+            error "❌ No se encontró el directorio ${serviceDir}"
+            return
+        }
+
+        echo "🔍 Analizando ${serviceName} con SonarQube en ${NODO_COMPILACION}..."
+        def taskId = ''
+
+        dir(serviceDir) {
+            // Ejecutamos el análisis SonarQube usando la Java Home del nodo Docker
+            withSonarQubeEnv('SonarQubeServer') {
+                withEnv(["JAVA_HOME=${env.PIPELINE_JAVA_HOME}", "PATH+JAVA=${env.PIPELINE_JAVA_HOME}/bin"]) {
+                    if (sh(script: 'test -x "$JAVA_HOME/bin/javac"', returnStatus: true) != 0) {
+                        error("JAVA_HOME_NODO_INVALIDO: ${env.PIPELINE_JAVA_HOME} sin javac en ${env.NODE_NAME} (${NODO_COMPILACION}); revisa devops.java_home_nodo")
+                    }
+                    // Solo ejecutar sonar, compileJava es requerido por el scanner
+                    sh './gradlew compileJava sonar'
+                }
+            }
+        }
+        echo "✅ Análisis SonarQube de ${serviceName} completado en ${NODO_COMPILACION}"
+    }
+}
+
+/**
+ * Función genérica que valida el Quality Gate impuesto por SonarQube.
+ * Establece un tiempo de espera y rompe la ejecución si el reporte no es aceptable (estado != OK).
+ * NOTA: La validación de rama se maneja a nivel de stage con 'when', no aquí.
+ * 
+ * @param serviceName Nombre del servicio sometido al quality gate
+ */
+def qualityGateMicroservice(serviceName) {
+    echo "🎯 Ejecutando Quality Gate para ${serviceName}"
+
+    // Esperamos a que el Quality Gate de SonarQube sea completado, con un timeout de 5 minutos
+    timeout(time: 5, unit: 'MINUTES') {
+        def qg = waitForQualityGate(webhookSecretId: 'sonarqube-webhook-integration-secret')
+        if (qg.status != 'OK') {
+            error "❌ Quality Gate falló: ${qg.status}"
+        }
+    }
+    echo "✅ Quality Gate de SonarQube de ${serviceName} completado exitosamente"
+}
+
+/**
+ * Función central: compara commits o lista el directorio versionado completo si no hay base o se fuerza.
+ * Valida de forma inteligente qué archivos sufrieron modificaciones entre la revisión base y la revisión objetivo.
+ * Sin métodos que requieren aprobación de script externa.
+ *
+ * @param serviceDir Directorio a verificar (ej: "pedidos-service", "example-service")
+ * @param fileTypes Lista opcional de extensiones de archivo a considerar (ej: [".java", ".yml"])
+ * @param fileNames Lista opcional de nombres de archivo exactos a considerar (ej: ["Dockerfile", "application"])
+ * @return boolean true si hay cambios sustanciales detectados, false si la compilación/build puede ignorarse
+ */
+def hasDirectoryChanges(serviceDir, fileTypes = null, fileNames = null) {
+    // Validación inicial del parámetro
+    if (!serviceDir || serviceDir.trim().isEmpty()) {
+        echo '⚠️ Advertencia: serviceDir está vacío o nulo'
+        return false
+    }
+
+    // Normalizar el directorio (agregar / al final si no lo tiene)
+    def normalizedDir = serviceDir.endsWith('/') ? serviceDir : "${serviceDir}/"
+
+    echo "🔍 Verificando cambios en directorio: ${normalizedDir}"
+
+    // Mostrar información sobre filtros aplicados
+    if (fileTypes || fileNames) {
+        echo '🔧 Filtros aplicados:'
+        if (fileTypes) {
+            echo "   📄 Extensiones de archivo: ${fileTypes.join(', ')}"
+        }
+        if (fileNames) {
+            echo "   📝 Nombres de archivo: ${fileNames.join(', ')}"
+        }
+    } else {
+        echo '🔧 Sin filtros aplicados (detección de cualquier cambio)'
+    }
+
+    def directorioCompleto = params.CONSTRUIR_TODO == true ||
+        !env.GIT_PREVIOUS_SUCCESSFUL_COMMIT || !env.GIT_COMMIT
+    def baseCommit = env.GIT_PREVIOUS_SUCCESSFUL_COMMIT
+    def targetCommit = env.GIT_COMMIT
+    def commitSource = 'Jenkins variables'
+    def archivos = directorioCompleto ? 'archivos del directorio' : 'archivos modificados'
+    def referencia = directorioCompleto ? 'HEAD (directorio completo)' :
+        "${baseCommit}...${targetCommit} (${commitSource})"
+    if (directorioCompleto) {
+        def motivo = params.CONSTRUIR_TODO == true ? 'CONSTRUIR_TODO=true' :
+            (!baseCommit ? 'sin build anterior con éxito' : 'sin GIT_COMMIT')
+        echo "📊 ${motivo}: se mira el directorio completo"
+    }
+
+    try {
+        def gitCommand = directorioCompleto ?
+            "git ls-tree -r --name-only HEAD -- ${shellQuote(normalizedDir)}" :
+            "git diff --name-only ${baseCommit} ${targetCommit}"
+        echo "🔧 Ejecutando: ${gitCommand}"
+
+        def gitDiffOutput = sh(
+            script: gitCommand,
+            returnStdout: true
+        ).trim()
+
+        // Si no hay output, significa que no hay cambios
+        if (gitDiffOutput.isEmpty()) {
+            echo "ℹ️ Sin ${archivos}: ${referencia}"
+            return false
+        }
+
+        // Dividir la salida en líneas (archivos individuales)
+        def changedFiles = gitDiffOutput.split('\n')
+        echo "📋 Total de ${archivos}: ${changedFiles.size()}"
+
+        // Filtrar archivos que pertenecen al directorio objetivo
+        def relevantFiles = changedFiles.findAll { file ->
+            file.startsWith(normalizedDir)
+        }
+
+        // Aplicar filtros adicionales si se especificaron
+        if (fileTypes || fileNames) {
+            relevantFiles = relevantFiles.findAll { file ->
+                return matchesFilters(file, fileTypes, fileNames)
+            }
+        }
+
+        // Verificar si encontramos archivos relevantes
+        if (relevantFiles.size() > 0) {
+            echo "✅ Cambios detectados en directorio '${serviceDir}'"
+            echo "📁 ${archivos} en ${serviceDir} (${relevantFiles.size()} archivos):"
+
+            // CORREGIDO: Usar un loop manual en lugar de .take()
+            def maxFilesToShow = 10
+            for (int i = 0; i < relevantFiles.size() && i < maxFilesToShow; i++) {
+                echo "   - ${relevantFiles[i]}"
+            }
+            if (relevantFiles.size() > maxFilesToShow) {
+                echo "   ... y ${relevantFiles.size() - maxFilesToShow} archivos más"
+            }
+
+            echo "🔗 Referencia: ${referencia}"
+            return true
+        } else {
+            echo "ℹ️ No se detectaron cambios en directorio '${serviceDir}'"
+
+            // Mostrar archivos que no pasaron los filtros para diagnóstico
+            def filesInDir = changedFiles.findAll { file -> file.startsWith(normalizedDir) }
+            if (filesInDir.size() > 0 && (fileTypes || fileNames)) {
+                echo "📂 ${archivos} en ${serviceDir} que no pasaron los filtros (${filesInDir.size()} archivos):"
+
+                // CORREGIDO: Usar un loop manual en lugar de .take()
+                def maxFilesToShow = 10
+                for (int i = 0; i < filesInDir.size() && i < maxFilesToShow; i++) {
+                    echo "   - ${filesInDir[i]}"
+                }
+                if (filesInDir.size() > maxFilesToShow) {
+                    echo "   ... y ${filesInDir.size() - maxFilesToShow} archivos más"
+                }
+            } else {
+                echo "📂 ${archivos} en otros directorios (${changedFiles.size()} archivos):"
+
+                // CORREGIDO: Usar un loop manual en lugar de .take()
+                def maxFilesToShow = 10
+                for (int i = 0; i < changedFiles.size() && i < maxFilesToShow; i++) {
+                    echo "   - ${changedFiles[i]}"
+                }
+                if (changedFiles.size() > maxFilesToShow) {
+                    echo "   ... y ${changedFiles.size() - maxFilesToShow} archivos más"
+                }
+            }
+            echo "🔗 Referencia: ${referencia}"
+            return false
+        }
+    } catch (Exception e) {
+        def errorMessage = e.getMessage()
+        echo "❌ Error al consultar archivos con Git: ${errorMessage}"
+
+        // Analizar el tipo de error para dar contexto
+        if (errorMessage.contains('bad revision') ||
+            errorMessage.contains('unknown revision') ||
+            errorMessage.contains('ambiguous argument')) {
+            echo '⚠️ No se pudo comparar commits - posibles causas:'
+            echo '   • Primer commit del repositorio'
+            echo '   • Rama nueva sin historial'
+            echo '   • Commits no válidos o inexistentes'
+            echo '   • Repositorio en estado inconsistente'
+        } else if (errorMessage.contains('Not a git repository')) {
+            echo '⚠️ No se detectó un repositorio Git válido'
+        } else {
+            echo '⚠️ Error desconocido al consultar archivos con Git'
+            }
+
+        // Estrategia fail-safe: asumir que hay cambios
+        echo "✅ Por seguridad, asumiendo que hay cambios en directorio '${serviceDir}'"
+        echo "🔗 Referencia que se intentó consultar: ${referencia}"
+        return true
+    }
+}
+
+/**
+ * Función auxiliar para verificar si un archivo coincide con los filtros especificados
+ *
+ * @param filePath Ruta completa del archivo
+ * @param fileTypes Lista de extensiones de archivo a considerar
+ * @param fileNames Lista de nombres de archivo exactos a considerar
+ * @return boolean true si el archivo coincide con los filtros, false en caso contrario
+ */
+def matchesFilters(filePath, fileTypes, fileNames) {
+    if (!fileTypes && !fileNames) return true
+    // Extraer el nombre del archivo de la ruta completa
+    def fileName = filePath.split('/').last()
+
+    // Extraer el nombre base (sin extensión) y la extensión
+    def lastDotIndex = fileName.lastIndexOf('.')
+    def baseName = ''
+    def extension = ''
+
+    if (lastDotIndex > 0) {
+        baseName = fileName.substring(0, lastDotIndex)
+        extension = fileName.substring(lastDotIndex)
+    } else {
+        baseName = fileName
+        extension = ''
+    }
+
+    // Verificar filtros de tipos de archivo
+    def matchesFileType = false
+    if (fileTypes && !fileTypes.isEmpty()) {
+        matchesFileType = fileTypes.any { type ->
+            // Asegurar que la extensión tenga punto al inicio
+            def normalizedType = type.startsWith('.') ? type : ".${type}"
+            return extension.equals(normalizedType)
+        }
+    }
+
+    // Verificar filtros de nombres de archivo
+    def matchesFileName = false
+    if (fileNames && !fileNames.isEmpty()) {
+        matchesFileName = fileNames.any { name ->
+            return baseName.equals(name)
+        }
+    }
+
+    // El archivo debe coincidir con cualquiera de los filtros (si están especificados)
+    return matchesFileType || matchesFileName
+}
+
+// ============================================================================
+// FUNCIONES DE CONFIGURACIÓN DE SERVICIOS
+// ============================================================================
+
+
+// Entradas generadas desde stack.yaml; nunca valores de credenciales.
+def getEnvironments() {
+    return [
+        __MAPA_ENTORNOS__
+    ]
+}
+
+def resolverEntorno(String rama) {
+    def found = null
+    getEnvironments().each { carpeta, cfg ->
+        def patron = cfg.rama
+        def coincide = patron.endsWith('/*') ? rama.startsWith(patron.substring(0, patron.length() - 1)) : rama == patron
+        if (coincide) {
+            if (found != null) error('ENTORNO_AMBIGUO: más de una entrada coincide con la rama.')
+            found = [carpeta: carpeta, sufijo: cfg.sufijo, credencial_kubeconfig: cfg.credencial_kubeconfig,
+                     imagen: cfg.imagen, desplegar: cfg.desplegar]
+        }
+    }
+    return found
+}
+
+def shellQuote(String value) {
+    return "'" + value.replace("'", "'\"'\"'") + "'"
+}
+
+def comprobarHistorial() {
+    if (sh(script: 'git rev-parse --is-shallow-repository', returnStdout: true).trim() != 'false') {
+        error('HISTORIAL_INCOMPLETO: se necesita un clon completo; no se descarga historial automáticamente.')
+    }
+    def actual = sh(script: 'git rev-parse HEAD', returnStdout: true).trim()
+    if (actual != env.PIPELINE_COMMIT) error('REVISION_DISTINTA: el workspace no corresponde al commit del build.')
+}
+
+def resolverCommit(String corto) {
+    if (!corto.matches('[0-9a-f]{7,12}')) error('TAG_SIN_COMMIT: la imagen no tiene un commit acreditado.')
+    // Un commit de otra rama puede no existir en este clon completo de main.
+    def objects = sh(script: "git rev-parse --disambiguate=${corto}", returnStdout: true).trim()
+    if (!objects) return null
+    def tipos = sh(script: "printf '%s\\n' ${shellQuote(objects)} | git cat-file --batch-check='%(objecttype) %(objectname)'", returnStdout: true).trim()
+    def commits = []
+    for (def linea in tipos.split('\n')) {
+        def campos = linea.split(' ')
+        if (campos.size() != 2 || !['commit', 'blob', 'tree', 'tag'].contains(campos[0])) {
+            error('HISTORIAL_INVALIDO: no se pudo comprobar el tipo de un objeto del tag.')
+        }
+        if (campos[0] == 'commit') commits.add(campos[1])
+    }
+    if (!commits) return null // Blobs, trees y tags no acreditan el commit de una imagen.
+    if (commits.size() != 1) error('HISTORIAL_INVALIDO: el sha del tag es ambiguo entre commits.')
+    return commits[0]
+}
+
+def esAncestro(String anterior, String posterior) {
+    def status = sh(script: "git merge-base --is-ancestor ${shellQuote(anterior)} ${shellQuote(posterior)}", returnStatus: true)
+    if (status == 0) return true // Incluye igualdad, confirmada por el usuario.
+    if (status == 1) return false
+    error('HISTORIAL_INCOMPLETO: no pudo comprobarse la relación entre commits.')
+}
+
+def validarImagenParaServicio(String tag, String serviceDir) {
+    comprobarHistorial()
+    if (!tag.matches('[0-9]+\\.[0-9]+\\.[0-9]+-[0-9a-f]{7,12}')) error('TAG_SIN_COMMIT: los tags históricos no se promueven.')
+    def commit = resolverCommit(tag.tokenize('-')[-1])
+    if (commit == null) error('IMAGEN_NO_ELEGIBLE: el commit del tag no existe en este clon.')
+    if (!esAncestro(commit, env.PIPELINE_COMMIT)) error('IMAGEN_NO_FUSIONADA: el commit no pertenece a esta rama.')
+    def ultimo = sh(script: "git log -1 --format=%H HEAD -- ${shellQuote(serviceDir)}", returnStdout: true).trim()
+    if (!ultimo || sh(script: "git rev-parse --verify ${shellQuote(ultimo + '^{commit}')} >/dev/null 2>&1", returnStatus: true) != 0) error('SERVICIO_SIN_HISTORIAL: no se pudo resolver su último cambio.')
+    if (!esAncestro(ultimo, commit)) {
+        error('IMAGEN_DESACTUALIZADA: falta una imagen que incluya el último cambio del servicio; revisa build, squash/rebase o hotfix.')
+    }
+    return commit
+}
+
+def seleccionarImagenPromocion(serviceName, serviceDir, candidatos = null) {
+    comprobarHistorial()
+    def tags = candidatos != null ? candidatos : getLatestImageTags(serviceName, '^[0-9]+\\.[0-9]+\\.[0-9]+-[0-9a-f]{7,12}$', 0)
+    def selected = null
+    def selectedVersion = null
+    def selectedCommit = null
+    for (def tag in tags) {
+        def version = tag.tokenize('-')[0].tokenize('.').collect { it.toInteger() }
+        // Ya se revisaron todos los empates; no resolver commits de versiones inferiores.
+        if (selectedVersion != null && version != selectedVersion) break
+        def commit = resolverCommit(tag.tokenize('-')[-1])
+        if (commit == null) continue // Objeto inexistente en este clon: no elegible.
+        if (esAncestro(commit, env.PIPELINE_COMMIT)) {
+            if (selected == null) {
+                selected = tag; selectedVersion = version; selectedCommit = commit
+            } else if (selectedCommit != commit) {
+                error('VERSION_AMBIGUA: dos tags con igual número y distinto commit son elegibles.')
+            }
+        }
+    }
+    if (selected == null) {
+        if (env.PIPELINE_MODO_IMAGEN == 'construir') {
+            error('SIN_IMAGEN_PROMOVIBLE: construye primero una imagen integrada con commit; lanza "Build with Parameters" con CONSTRUIR_TODO=true.')
+        }
+        def ramaConstructora = ''
+        getEnvironments().each { carpeta, cfg ->
+            if (cfg.imagen == 'construir') ramaConstructora = cfg.rama
+        }
+        error("SIN_IMAGEN_PROMOVIBLE: construye primero una imagen integrada con commit; despliega antes la rama constructora (${ramaConstructora}).")
+    }
+    validarImagenParaServicio(selected, serviceDir)
+    return selected
+}
+
+/**
+ * Función global para definir los servicios disponibles
+ * @return Map con la configuración de todos los servicios
+ */
+def getServices() {
+    // una entrada por servicio; el agente solo edita este mapa
+    return [
+__SERVICIOS_JENKINS__
+    ]
+}
+
+// ============================================================================
+// FUNCIÓN AUXILIAR: Información de Debug Git
+// ============================================================================
+
+/**
+ * Función auxiliar para mostrar información de debug del estado Git
+ * Útil para troubleshooting cuando hasDirectoryChanges() no funciona como se espera
+ */
+def debugGitInfo() {
+    echo '🐛 === DEBUG: Información Git ==='
+
+    try {
+        // Mostrar variables de entorno de Jenkins
+        echo '📊 Variables de Jenkins:'
+        echo "   GIT_COMMIT: ${env.GIT_COMMIT ?: 'NO DISPONIBLE'}"
+        echo "   GIT_PREVIOUS_SUCCESSFUL_COMMIT: ${env.GIT_PREVIOUS_SUCCESSFUL_COMMIT ?: 'NO DISPONIBLE'}"
+        echo "   GIT_PREVIOUS_COMMIT: ${env.GIT_PREVIOUS_COMMIT ?: 'NO DISPONIBLE'}"
+        echo "   BRANCH_NAME: ${env.BRANCH_NAME ?: 'NO DISPONIBLE'}"
+
+        // Mostrar información básica del repositorio
+        echo '📁 Información del repositorio:'
+        sh 'git log --oneline -5'
+
+        echo '🌿 Estado actual:'
+        sh 'git status --porcelain'
+    } catch (Exception e) {
+        echo "❌ Error obteniendo información de debug: ${e.getMessage()}"
+    }
+
+    echo '🐛 === FIN DEBUG ==='
+}
+
+// ============================================================================
+// FUNCIONES DE DESPLIEGUE Y ETIQUETADO DOCKER
+// ============================================================================
+
+def rutaDeploymentServicio(serviceName, serviceDir) {
+    def serviceBaseName = serviceName.endsWith('-service') ?
+        serviceName.substring(0, serviceName.lastIndexOf('-service')) :
+        serviceName
+    return "devops/${env.PIPELINE_CARPETA}/${serviceDir}/deployment-${serviceBaseName}.yaml"
+}
+
+/**
+ * Función robusta para modificar manifiestos YAML y forzar la inyección
+ * de un nuevo tag en la etiqueta 'image' del Deployment. Emplea utilidades
+ * clásicas de Shell (sed/awk) garantizando alta compatibilidad entre SOs.
+ * 
+ * @param serviceName Nombre completo del servicio (incluyendo sub-fijo -service)
+ * @param serviceDir Directorio del repositorio de infraestructura
+ * @param newTag El nuevo tag calculado dinámicamente que se implantará
+ */
+def updateDeploymentTag(serviceName, serviceDir, newTag) {
+    echo "🔄 Actualizando deployment de ${serviceName} con tag: ${newTag}"
+
+    // 🔑 EXTRAER NOMBRE BASE: Quitar "-service" del final si existe
+    def serviceBaseName = serviceName.endsWith('-service') ?
+                        serviceName.substring(0, serviceName.lastIndexOf('-service')) :
+                        serviceName
+
+    echo "📝 Nombre base extraído: ${serviceBaseName} (desde ${serviceName})"
+
+    // Ruta centralizada para reusar en rollout/diagnóstico.
+    def deploymentFile = rutaDeploymentServicio(serviceName, serviceDir)
+
+    echo "📂 Archivo de deployment: ${deploymentFile}"
+
+    // Verificar que el archivo existe
+    if (!fileExists(deploymentFile)) {
+        error("Deployment no encontrado: ${deploymentFile}; genera o renombra el manifiesto según servicios.py nombres mediante un plan aprobado.")
+    }
+
+    // 🔧 MOSTRAR CONTENIDO ANTES DE LA ACTUALIZACIÓN
+    echo '📄 Contenido ANTES de la actualización:'
+    sh "grep -A1 -B1 'image:' ${deploymentFile}"
+
+    // 🔧 ACTUALIZACIÓN SIMPLE Y DIRECTA
+    // Patrón de imagen esperado: "image: <devops.registry>/example-service"
+    sh """
+        # Hacer backup del archivo original
+        cp ${deploymentFile} ${deploymentFile}.backup
+
+        # Actualizar usando el patrón más simple posible
+        # Patrón de imagen esperado: "image: <devops.registry>/example-service"
+        # Resultado esperado: "image: <devops.registry>/example-service:1.0.40"
+
+        # Opción 1: Reemplazar la línea completa
+        sed -i 's|image: <devops.registry>/${serviceName}|image: <devops.registry>/${serviceName}:${newTag}|g' ${deploymentFile}
+
+        echo "✅ Actualización aplicada"
+    """
+
+    // 🔧 VERIFICAR QUE LA ACTUALIZACIÓN FUNCIONÓ
+    echo '📄 Contenido DESPUÉS de la actualización:'
+    sh """
+        grep -A1 -B1 'image:' ${deploymentFile}
+
+        # Verificar específicamente si se actualizó correctamente
+        if grep -q "<devops.registry>/${serviceName}:${newTag}" ${deploymentFile}; then
+            echo ""
+            echo "✅ ¡ÉXITO! Tag ${newTag} encontrado en el archivo"
+            echo "🎯 Línea actualizada:"
+            grep "<devops.registry>/${serviceName}:${newTag}" ${deploymentFile}
+        else
+            echo ""
+            echo "❌ ERROR: Tag ${newTag} NO se encontró"
+            echo "🔍 Contenido actual de todas las líneas con 'image:':"
+            grep -n 'image:' ${deploymentFile}
+
+            echo ""
+            echo "🔧 Intentando método alternativo..."
+            # Método alternativo usando awk
+            awk '/image: <devops.registry>\\/${serviceName}/ {sub(/image: <devops.registry>\\/${serviceName}/, "image: <devops.registry>/${serviceName}:${newTag}"); print; next} {print}' ${deploymentFile} > ${deploymentFile}.tmp
+            mv ${deploymentFile}.tmp ${deploymentFile}
+
+            echo "📄 Resultado del método alternativo:"
+            grep "image:" ${deploymentFile}
+        fi
+    """
+
+    // 🔧 VALIDACIÓN FINAL
+    echo '🔍 Validación final:'
+    sh """
+        if grep -q "<devops.registry>/${serviceName}:${newTag}" ${deploymentFile}; then
+            echo "✅ SUCCESS: Deployment actualizado correctamente"
+            echo "🎯 Tag final: ${newTag}"
+
+            # Mostrar el diff con el backup
+            echo "📊 Diferencias aplicadas:"
+            diff ${deploymentFile}.backup ${deploymentFile} || echo "Archivo actualizado exitosamente"
+
+        else
+            echo "❌ FAILURE: No se pudo actualizar el deployment"
+            echo "🔍 Archivo completo:"
+            cat ${deploymentFile}
+            return 1
+        fi
+    """
+}
+
+/**
+ * Recupera el último tag expuesto remotamente en el Registry (Docker Hub)
+ * consumiendo el catálogo del servicio y buscando el patrón más reciente válido.
+ * 
+ * @param serviceName Nombre exacto del repositorio dentro del namespace (ej: 'example-service')
+ * @return String correspondiente al tag cronológicamente más actual o un error si el repo está vacío
+ */
+def getLatestImageTag(serviceName) {
+    def tags = getLatestImageTags(serviceName, '^[0-9]+\\.[0-9]+\\.[0-9]+(-[0-9a-f]{7,12})?$', 1)
+    return tags ? tags[0] : null
+}
+/**
+ * Operación matemática responsable del versionamiento de Semantic Versioning (SemVer).
+ * Divide y parsea el tag (ej. X.Y.Z) y produce el siguiente número de parche (Patch level).
+ * Conserva el acarreo decimal existente; admite tags con commit al leer la base.
+ * 
+ * @param version El tag base sobre el cual realizar el incremento
+ * @return El nuevo tag versionado secuencialmente
+ */
+def incrementVersion(String version) {
+    def parts = version.tokenize('-')[0].tokenize('.')
+    def major = parts[0].toInteger()
+    def minor = parts[1].toInteger()
+    def patch = parts[2].toInteger()
+    patch += 1
+    if (patch > 9) { patch = 0; minor += 1 }
+    if (minor > 9) { minor = 0; major += 1 }
+    return "${major}.${minor}.${patch}"
+}
+/**
+ * Orquestador principal de conexión API a Docker Hub Registry.
+ * Genera llamadas tipo cURL paginadas para encontrar y ordenar etiquetas válidas de
+ * un microservicio y retorna la sublista superior.
+ * 
+ * @param serviceName Nombre del repositorio remoto asociado al namespace logueado.
+ * @param tagPattern Expresión regular usada para enmarcar a qué clase de versión apuntar (ej: ramas principales).
+ * @param count Limita la carga de datos devuelta del parseo JSON, optimizando memoria (default 5).
+ * @return Lista de strings empaquetando ordenadamente los descriptores de versiones remotos.
+ */
+def getLatestImageTags(serviceName, tagPattern = '^[0-9]+\\.[0-9]+\\.[0-9]+(-[0-9a-f]{7,12})?$', count = 5) {
+    def baseUrl = "https://registry.hub.docker.com/v2/repositories/<devops.registry>/${serviceName}/tags/"
+    def filteredTags = []
+    def maxPages = 1000 // Cota de paginación: superar el límite es error, nunca catálogo parcial.
+    for (int number = 1; number <= maxPages; number++) {
+        def apiUrl = "${baseUrl}?page_size=100&page=${number}"
+        def response = sh(script: "curl -sS --connect-timeout 10 --max-time 30 --write-out '\\n%{http_code}' ${shellQuote(apiUrl)}", returnStdout: true)
+        def cut = response.lastIndexOf('\n')
+        if (cut < 0) error('REGISTRY_FORMATO: falta el status HTTP.')
+        def status = response.substring(cut + 1).trim()
+        if (status == '404' && number == 1) return [] // Servicio nunca publicado.
+        if (status != '200') error("REGISTRY_HTTP: ${status}; no se trata como catálogo vacío.")
+        def page = readJSON text: response.substring(0, cut)
+        // readJSON convierte el null JSON en un objeto (JSONNull) que no es null para Groovy.
+        if (!(page.results instanceof List)) error('REGISTRY_FORMATO: falta results.')
+        page.results.each { tag ->
+            def name = (tag?.name instanceof String) ? tag.name : null
+            if (name && name.matches(tagPattern) && !filteredTags.contains(name)) filteredTags.add(name)
+        }
+        // No se sigue la URL next: puede tener otro host. Solo indica si avanzar.
+        if (!(page.next instanceof String) || !page.next.trim()) break
+        if (number == maxPages) error('REGISTRY_PAGINACION: se superó el máximo de páginas.')
+    }
+    if (!filteredTags) return []
+    def ordered = sh(script: "printf '%s' ${shellQuote(filteredTags.join('\n') + '\n')} | LC_ALL=C sort -t. -k1,1nr -k2,2nr -k3,3nr", returnStdout: true).trim().split('\n')
+    def result = []
+    for (def tag in ordered) {
+        if (count > 0 && result.size() >= count) break
+        result.add(tag)
+    }
+    return result
+}

@@ -1,0 +1,24 @@
+# Se añade al final de application-<sufijo>.yaml; solo se activa junto al perfil k8s.
+---
+spring:
+  config:
+    activate:
+      on-profile: k8s
+# si integraciones.autenticacion=clerk
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: __CLERK_ISSUER_URI__
+# fin
+gateway:
+  cors-origenes:
+    - __CORS_ORIGEN__
+management:
+  endpoint:
+    health:
+      show-details: never
+  endpoints:
+    web:
+      exposure:
+        include: health,info

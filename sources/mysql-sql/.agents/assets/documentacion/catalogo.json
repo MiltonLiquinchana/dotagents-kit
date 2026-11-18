@@ -1,0 +1,24 @@
+{
+  "tecnologias": {
+    "mysql": "MySQL"
+  },
+  "fuentes": [
+    {
+      "id": "S1",
+      "tecnologia": "mysql",
+      "tipo": "referencia",
+      "url": "https://dev.mysql.com/doc/refman/{serie}/en/{tema}.html",
+      "secciones": "DDL, CREATE/ALTER TABLE, restricciones, rutinas, handlers, índices, EXPLAIN y optimización; una página por tema",
+      "estado": "por verificar"
+    }
+  ],
+  "detectores": [],
+  "dominios_oficiales": {
+    "mysql": [
+      {
+        "host": "dev.mysql.com",
+        "ruta": "/"
+      }
+    ]
+  }
+}

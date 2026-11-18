@@ -1,0 +1,8 @@
+// si-archivo integraciones.gestion_usuarios=organizaciones|aplicacion
+// Se añaden dentro de dependencies; quitar Data REST del build de este servicio.
+implementation 'org.springframework.boot:spring-boot-starter-web'
+implementation 'com.clerk:backend-api:5.0.0'
+implementation 'com.svix:svix:2.0.0-rc.2'
+testImplementation 'org.springframework.boot:spring-boot-starter-test'
+implementation 'org.springframework.boot:spring-boot-starter-security'
+implementation 'org.springframework.boot:spring-boot-starter-oauth2-resource-server'

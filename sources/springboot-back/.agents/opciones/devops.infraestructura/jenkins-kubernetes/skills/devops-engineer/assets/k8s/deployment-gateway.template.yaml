@@ -1,0 +1,150 @@
+# ==============================================================================
+# DESPLIEGUE DE PUERTA DE ENLACE (SPRING CLOUD GATEWAY) - __CARPETA_ENTORNO__
+# Define el Deployment, límites de recursos, inyección de variables de entorno,
+# probes de salud y tolerancias para la puerta de enlace unificada del sistema.
+# ==============================================================================
+
+apiVersion: apps/v1          # Versión estable de la API para cargas de trabajo tipo Deployment
+kind: Deployment             # Tipo de recurso: Controlador para la gestión declarativa de Pods
+metadata:
+  name: __BASE__-__ENTORNO__-deployment
+  namespace: default
+  labels:                    # Etiquetas de categorización y enrutamiento interno
+    app: __BASE__-__ENTORNO__
+    tier: application
+    component: gateway
+    version: "1.0"
+    environment: __CARPETA_ENTORNO__
+    framework: spring-boot
+    managed-by: manual
+    service-type: gateway
+  annotations:               # Metadatos informativos y de contacto de SRE
+    description: "__BASE__ service deployment with discovery"
+    created-by: "kubernetes-admin"
+    contact: "backend-team@example.invalid"
+
+spec:
+  replicas: __REPLICAS__                # Número de instancias deseadas en el ambiente de desarrollo
+  strategy:
+    type: RollingUpdate      # Estrategia de actualización progresiva sin downtime
+    rollingUpdate:
+      maxUnavailable: 1      # Número máximo de Pods que pueden estar no disponibles durante la actualización
+      maxSurge: 1            # Número máximo de Pods que pueden crearse por encima del número deseado
+
+  selector:                  # Selector de etiquetas para asociar los Pods gestionados
+    matchLabels:
+      app: __BASE__-__ENTORNO__
+      tier: application
+
+  template:                  # Plantilla de definición del Pod
+    metadata:
+      labels:                # Etiquetas inyectadas en los Pods instanciados
+        app: __BASE__-__ENTORNO__
+        tier: application
+        component: client
+        version: "1.0"
+        environment: __CARPETA_ENTORNO__
+        framework: spring-boot
+
+    spec:
+      serviceAccountName: discovery-service-account  # 🔑 CRÍTICO: ServiceAccount autorizado para descubrir servicios via API Server
+
+      securityContext:       # Contexto de seguridad del Pod (Hardening de privilegios de usuario)
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+
+      containers:
+        - name: __BASE__-__ENTORNO__-service-container
+          image: <devops.registry>/__NOMBRE__
+          imagePullPolicy: Always
+
+          securityContext:   # Restricciones de seguridad del contenedor
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+                - ALL
+
+          # ASIGNACIÓN DE RECURSOS (DIMENSIONAMIENTO SRE):
+          resources:
+            requests:
+              memory: "__MEMORIA_PETICION__"    # Reserva garantizada de memoria RAM
+              cpu: "__CPU_PETICION__"        # Equivalente a 0.25 CPU Core reservado
+            limits:
+              memory: "__MEMORIA_LIMITE__"    # Límite máximo de memoria RAM
+              cpu: "__CPU_LIMITE__"        # Equivalente a 0.5 CPU Core máximo asignado
+
+          ports:
+            - containerPort: __PUERTO__
+              name: http
+              protocol: TCP
+
+          env:               # Variables de entorno inyectadas en la aplicación Spring Boot
+            - name: SPRING_PROFILES_ACTIVE
+              value: "docker,k8s,__ENTORNO__"
+            - name: JAVA_OPTS
+              value: "-XX:MaxRAMPercentage=37.5 -XX:InitialRAMPercentage=18.75 -XX:+UseG1GC -XX:+UseContainerSupport"
+
+          # MONITOREO DE ESTADO (PROBES DE SALUD ACTUATOR):
+
+          # 1. STARTUP PROBE (Sonda de Inicio):
+          # Protege la fase de inicialización previniendo reinicios tempranos causados por el delay de Spring Actuator.
+          startupProbe:
+            httpGet:
+              path: /actuator/health
+              port: __PUERTO__
+              scheme: HTTP
+            initialDelaySeconds: 45 # Periodo de gracia inicial para el arranque de la JVM
+            periodSeconds: 10       # Reintento cada 10 segundos
+            timeoutSeconds: 10      # Tolerancia de timeout por petición
+            failureThreshold: 15    # 15 reintentos x 10s = 2.5 minutos de tolerancia máxima para iniciar
+            successThreshold: 1     # Éxitos requeridos para habilitar las demás sondas
+
+          # 2. LIVENESS PROBE (Sonda de Supervivencia):
+          # Detecta si el proceso del gateway está colgado o en un estado de deadlock.
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: __PUERTO__
+              scheme: HTTP
+            initialDelaySeconds: 0  # Comprobación inmediata tras pasar la sonda de inicio
+            periodSeconds: 30       # Comprobación recurrente pasiva cada 30 segundos
+            timeoutSeconds: 10      # Tiempo máximo de espera de respuesta
+            failureThreshold: 3     # 3 fallos consecutivos provocan la recreación del contenedor
+            successThreshold: 1     # Éxito requerido para mantener el Pod estable
+
+          # 3. READINESS PROBE (Sonda de Disponibilidad):
+          # Evalúa si la puerta de enlace está lista para recibir y enrutar peticiones HTTP.
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: __PUERTO__
+              scheme: HTTP
+            initialDelaySeconds: 0
+            periodSeconds: 10       # Frecuencia rápida para detectar caídas temporales de red/servicios
+            timeoutSeconds: 5       # Tolerancia de timeout estricta
+            failureThreshold: 3     # 3 fallos consecutivos remueven temporalmente el Pod del balanceo de red
+            successThreshold: 1     # Éxito requerido para reincorporar el Pod al Service
+
+      restartPolicy: Always  # Asegura que Kubernetes siempre levante un Pod en caso de fallos
+
+      # PARADA ELEGANTE (GRACEFUL SHUTDOWN):
+      # Brinda un margen para procesar las peticiones pendientes antes de finalizar forzosamente.
+      terminationGracePeriodSeconds: 60
+
+      # TOLERANCIAS DE NODO (NODE TOLERATIONS):
+      # Evita que fallos transitorios en el clúster expulsen inmediatamente la puerta de enlace.
+      tolerations:
+        # Tolerancia para nodos en estado 'NotReady' (e.g. reinicios temporales)
+        - key: "node.kubernetes.io/not-ready"
+          operator: "Exists"
+          effect: "NoExecute"
+          tolerationSeconds: 300
+
+        # Tolerancia para nodos inalcanzables ('Unreachable')
+        - key: "node.kubernetes.io/unreachable"
+          operator: "Exists"
+          effect: "NoExecute"
+          tolerationSeconds: 300

@@ -1,0 +1,46 @@
+# ==============================================================================
+# SERVICIO DE RED DEL MICROSERVICIO DE __BASE__ (__NOMBRE__) - DESARROLLO
+# Define la exposición interna y externa de la API de __BASE__ mediante un Service
+# que mapea el puerto __PUERTO__ hacia los Pods correspondientes de la aplicación.
+# ==============================================================================
+
+apiVersion: v1              # Versión core de la API de Kubernetes para Services
+kind: Service               # Tipo de recurso: Service para exposición de red
+metadata:
+  name: __BASE__-__ENTORNO__-service # Nombre único del Service (resolución DNS: __BASE__-__ENTORNO__-service:__PUERTO__)
+  labels:                   # Etiquetas organizativas de red y monitoreo
+    app: __BASE__-__ENTORNO__
+    tier: application 
+    component: backend 
+    service-type: microservice 
+    environment: __CARPETA_ENTORNO__
+
+  annotations:              # Metadatos documentales de SRE
+    kubernetes.io/description: "Microservice __BASE__ service"
+
+spec:
+  # SELECTOR DE PODS:
+  # Redirige el tráfico TCP a los Pods del Deployment '__BASE__-__ENTORNO__-deployment'.
+  selector:
+    app: __BASE__-__ENTORNO__
+    tier: application 
+
+  # TIPO DE SERVICIO:
+  # NodePort abre un puerto fijo en la IP de Minikube para pruebas y auditorías externas.
+  type: NodePort
+
+  ports:
+    # PUERTO DEL MICROSERVICIO DE __BASE__:
+    - name: __BASE__-__ENTORNO__-port
+      port: __PUERTO__            # Puerto de red lógico expuesto internamente en el clúster
+      targetPort: __PUERTO__      # Puerto real en el que escucha el contenedor Spring Boot
+      nodePort: __NODE_PORT__       # Puerto TCP externo abierto en los nodos del clúster (rango 30000-32767)
+      protocol: TCP 
+
+  # AFINIDAD DE SESIÓN:
+  # 'None' habilita el balanceo round-robin por defecto sin mantener persistencia de IP.
+  sessionAffinity: None 
+
+  # POLÍTICA DE TRÁFICO EXTERNO:
+  # 'Cluster' balancea las peticiones de forma uniforme entre los distintos nodos.
+  externalTrafficPolicy: Cluster

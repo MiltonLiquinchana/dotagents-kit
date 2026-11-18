@@ -1,0 +1,99 @@
+# Parámetros del proyecto. Este archivo es el ÚNICO sitio donde se escriben estos valores;
+# los scripts, skills, reglas y workflows los leen aquí (marcadores `<clave>`).
+version_esquema: 1              # no cambiar: versión del formato de este archivo
+
+proyecto:
+  nombre: mi-proyecto-back      # nombre del proyecto; también se usa en mensajes
+  stack: springboot             # no cambiar: identifica este .agents
+
+backend:
+  group: com.ejemplo            # group de los servicios y raíz de sus paquetes Java; los existentes se revisan antes de cambiar
+  java: 26                      # versión de Java (JavaLanguageVersion) de todos los servicios; el preflight la comprueba
+  spring_boot: "4.0.6"          # versión de Spring Boot de los servicios
+  build: gradle                 # no cambiar: cada servicio es un build Gradle independiente
+  gateway: gateway-service      # servicio que valida la autenticación, o null si no hay
+  cors_origenes: [http://localhost:3000]   # orígenes del front permitidos por el gateway
+  persistencia: jpa             # jpa | jdbc: estilo de acceso a datos de los servicios; valores válidos en .agents/config/opciones.yaml
+  lombok: true                  # true | false: uso de Lombok en los servicios; valores válidos en .agents/config/opciones.yaml
+  prueba_viva: true             # true | false: prueba en vivo de una feature tras la revisión (arrancarla con el perfil local y probarla contra la base accesible para pruebas); false = omitir el paso
+  jdk_ruta_desarrollo: /usr/lib/jvm/jdk-26.0.1  # Una sola ruta POSIX absoluta del JDK de desarrollo, sin comas, o null para no gestionar org.gradle.java.installations.paths.
+  perfil_local: feature         # perfil local activo en application.yaml; distinto de los sufijos de devops.entornos
+
+sonarqube:
+  url: http://localhost:9000    # servidor SonarQube; la variable SONARQUBE_URL tiene prioridad
+
+mcp:
+  sonarqube: sonarqube            # nombre con el que el servidor MCP de SonarQube está registrado en tus herramientas
+
+integraciones:
+  gestion_usuarios: ninguna     # ninguna | organizaciones | aplicacion: gestión de perfiles con Clerk; recomendado ninguna
+  autenticacion: clerk          # ninguna | clerk
+  clerk_issuer_uri: https://clerk.example.invalid   # issuer de los JWT; obligatoria con autenticacion: clerk
+  variables_autenticacion: [CLERK_SECRET_KEY, CLERK_WEBHOOK_SIGNING_SECRET]   # solo NOMBRES de variables de entorno; nunca valores  # requerida_con: integraciones.autenticacion=clerk && integraciones.gestion_usuarios!=ninguna
+
+herramientas:
+  graphify: true                # false = este proyecto no usa grafo de código
+
+git:
+  rama_base: null               # referencia para comparar; en cierre de perfiles, null busca una base local disponible e incluye commits y árbol
+
+api_error:
+  campo_mensaje: message       # campo del cuerpo de error con el texto para el usuario
+  campo_codigo: null           # campo del código de negocio, o null si la API no lo manda
+
+devops:
+  infraestructura: jenkins-kubernetes  # ninguna | jenkins-kubernetes; valores en .agents/config/opciones.yaml
+  jenkinsfile: devops/Jenkinsfile  # Ruta relativa del pipeline existente o devops/Jenkinsfile para uno nuevo; sin .. ni contrabarras.  # requerida_con: devops.infraestructura=jenkins-kubernetes
+  nodos:  # requerida_con: devops.infraestructura=jenkins-kubernetes
+    general: principal  # Etiqueta del agente general; por ejemplo principal.
+    compilacion: compilador  # Etiqueta de compilación y análisis; por ejemplo compilador.
+    docker: docker  # Etiqueta del nodo Docker; por ejemplo docker.
+  registry: mi-registro  # usuario o namespace de las imágenes del servicio
+  entornos:  # requerida_con: devops.infraestructura=jenkins-kubernetes
+    development:
+      rama: development  # rama exacta o prefijo xxx/*; no debe solaparse
+      sufijo: dev  # sufijo único de perfiles, recursos y variables
+      credencial_kubeconfig: jenkins-kubeconfig-file  # solo ID de credencial en Jenkins, nunca su valor
+      imagen: construir  # construir | promover; como máximo un constructor
+      desplegar: true  # true | false; promover exige true
+      replicas: 1  # número entero positivo  # requerida_con: devops.entornos.{nombre}.desplegar=true
+      cpu_peticion: 250m  # CPU solicitada con unidad m  # requerida_con: devops.entornos.{nombre}.desplegar=true
+      cpu_limite: 500m  # CPU máxima con unidad m  # requerida_con: devops.entornos.{nombre}.desplegar=true
+      memoria_peticion: 256Mi  # memoria solicitada con unidad Ki/Mi/Gi/Ti  # requerida_con: devops.entornos.{nombre}.desplegar=true
+      memoria_limite: 512Mi  # memoria máxima con unidad Ki/Mi/Gi/Ti  # requerida_con: devops.entornos.{nombre}.desplegar=true
+      nodo_puerto_base: 30800  # nodePort = base + (puerto - 8080)  # requerida_con: devops.entornos.{nombre}.desplegar=true
+      gateway_nodo_puerto: 30080  # nodePort explícito del gateway, sin fórmula  # requerida_con: devops.entornos.{nombre}.desplegar=true && backend.gateway!=null
+      cors_origenes: [http://localhost:3000]  # orígenes públicos de este entorno, sin barra final  # requerida_con: devops.entornos.{nombre}.desplegar=true && backend.gateway!=null
+      clerk_issuer_uri: https://clerk-dev.example.invalid  # requerida_con: devops.entornos.{nombre}.desplegar=true && integraciones.autenticacion=clerk
+    main:
+      rama: main  # rama exacta o prefijo xxx/*; no debe solaparse
+      sufijo: prod  # sufijo único de perfiles, recursos y variables
+      credencial_kubeconfig: jenkins-kubeconfig-main  # solo ID de credencial en Jenkins, nunca su valor
+      imagen: promover  # construir | promover; como máximo un constructor
+      desplegar: true  # true | false; promover exige true
+      replicas: 2  # número entero positivo  # requerida_con: devops.entornos.{nombre}.desplegar=true
+      cpu_peticion: 500m  # CPU solicitada con unidad m  # requerida_con: devops.entornos.{nombre}.desplegar=true
+      cpu_limite: 1000m  # CPU máxima con unidad m  # requerida_con: devops.entornos.{nombre}.desplegar=true
+      memoria_peticion: 512Mi  # memoria solicitada con unidad Ki/Mi/Gi/Ti  # requerida_con: devops.entornos.{nombre}.desplegar=true
+      memoria_limite: 1024Mi  # memoria máxima con unidad Ki/Mi/Gi/Ti  # requerida_con: devops.entornos.{nombre}.desplegar=true
+      nodo_puerto_base: 31400  # nodePort = base + (puerto - 8080)  # requerida_con: devops.entornos.{nombre}.desplegar=true
+      gateway_nodo_puerto: 30680  # nodePort explícito del gateway, sin fórmula  # requerida_con: devops.entornos.{nombre}.desplegar=true && backend.gateway!=null
+      cors_origenes: [https://front-prod.example.invalid]  # orígenes públicos de este entorno, sin barra final  # requerida_con: devops.entornos.{nombre}.desplegar=true && backend.gateway!=null
+      clerk_issuer_uri: https://clerk-prod.example.invalid  # requerida_con: devops.entornos.{nombre}.desplegar=true && integraciones.autenticacion=clerk
+  java_home_nodo: /usr/lib/jvm/jdk-26.0.1  # JAVA_HOME del nodo Jenkins para compilar
+  java_home_contenedor: /opt/jdk-26.0.1  # JAVA_HOME del contenedor: proponer carpeta del tar de jdk_url bajo /opt/ y pedir confirmación; si no se sabe, preguntar sin descargar ni inventar
+  jdk_url: https://download.java.net/java/GA/jdk26.0.1/458fda22e4c54d5ba572ab8d2b22eb83/8/GPL/openjdk-26.0.1_linux-x64_bin.tar.gz  # URL de descarga del JDK para el Dockerfile
+  slack_canal: mi-proyecto-back      # canal de avisos de Jenkins, o null para no enviar avisos
+  credencial_bd_pruebas: null  # ID de credencial Jenkins «Username with password» para la base de pruebas del build, o null para no inyectar  # requerida_con: devops.infraestructura=jenkins-kubernetes
+
+nomenclatura:
+  estrategia_fisica_jpa: "org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl"  # PhysicalNamingStrategyStandardImpl conserva los nombres tal cual; CamelCaseToUnderscoresNamingStrategy los pasa a snake_case; recomendado PhysicalNamingStrategyStandardImpl  # requerida_con: backend.persistencia=jpa
+  clase_aplicacion: "{AliasPascal}ServiceApplication"  # patrón de clase_aplicacion; conserva el comodín {AliasPascal}; recomendado {AliasPascal}ServiceApplication
+
+documentacion:  # obligatorio: configura Open Notebook antes de trabajar
+  url_api: http://localhost:5055  # Dirección HTTP(S) de la API de Open Notebook, sin credenciales ni parámetros.
+  variable_password: null  # Nombre de la variable de entorno de la contraseña, o null si no se usa contraseña; nunca su valor.
+  modelo_chat: null  # ID del modelo de chat configurado en Open Notebook; null usa su predeterminado.
+  modelo_contexto_grande: null  # ID del modelo para contexto grande, o null; no se cambia el modelo global.
+  modelo_transformacion: null  # ID del modelo de transformaciones, o null para su predeterminado.
+  timeout_chat: 120  # segundos de espera de chat/execute y aplicación de transformaciones (1-3600); sin reintentos tras timeout o fallo del servidor

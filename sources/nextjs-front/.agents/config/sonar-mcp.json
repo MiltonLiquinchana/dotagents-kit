@@ -1,0 +1,14 @@
+{
+  "lectura": [
+    "analyze_code_snippet",
+    "search_my_sonarqube_projects",
+    "show_rule",
+    "get_project_quality_gate_status",
+    "search_sonar_issues_in_projects",
+    "list_quality_gates"
+  ],
+  "escritura": [
+    "change_sonar_issue_status",
+    "change_security_hotspot_status"
+  ]
+}

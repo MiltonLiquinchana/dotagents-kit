@@ -1,0 +1,9 @@
+.agents/
+knowledge-base/
+AGENTS.md
+CLAUDE.md
+README.md
+graphify-out/
+logs/
+node_modules/
+.next/

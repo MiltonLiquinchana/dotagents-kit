@@ -1,0 +1,34 @@
+# Configuración base de __NOMBRE__. Los datos de conexión van en
+# application-<perfil>.yaml, como variables de entorno sin respaldo.
+spring:
+  profiles:
+    active: <backend.perfil_local>
+  devtools:
+    restart:
+      enabled: true
+      quiet-period: 100ms
+      poll-interval: 150ms
+    livereload:
+      enabled: true
+# si backend.persistencia=jpa
+  jpa:
+    database-platform: org.hibernate.dialect.MySQLDialect
+    hibernate:
+      naming:
+        physical-strategy: <nomenclatura.estrategia_fisica_jpa>
+    show-sql: true
+  jackson:
+    serialization:
+      fail-on-empty-beans: false
+  data:
+    rest:
+      base-path: /api
+# fin
+server:
+  port: __PUERTO__
+  servlet:
+    context-path: __CONTEXT_PATH__
+logging:
+  file:
+    name: logs/app.log
+    path: logs

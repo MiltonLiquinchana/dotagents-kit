@@ -1,0 +1,3 @@
+# Si la opción de la izquierda tiene ese valor, se exigen los de la derecha.
+integraciones.gestion_usuarios=organizaciones: [integraciones.autenticacion=clerk]
+integraciones.gestion_usuarios=aplicacion: [integraciones.autenticacion=clerk]

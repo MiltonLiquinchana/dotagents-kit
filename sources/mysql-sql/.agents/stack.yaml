@@ -1,0 +1,69 @@
+# Parámetros del proyecto. Este archivo es el ÚNICO sitio donde se escriben estos valores;
+# los scripts, skills, reglas y workflows los leen aquí (marcadores `<clave>`).
+version_esquema: 1              # no cambiar: versión del formato de este archivo
+
+proyecto:
+  nombre: mi-proyecto-sql       # nombre del proyecto; también se usa en mensajes
+  stack: mysql                  # no cambiar: identifica este .agents
+
+base_de_datos:
+  motor: mysql                  # motor que este .agents admite; si no es mysql, el preflight se detiene
+  version: "9.5.0"              # fija la imagen del sandbox: mysql:<version> (la variable SQL_SANDBOX_IMAGE tiene prioridad)
+  nombre: MiBaseDeDatos   # esquema donde viven los objetos; lo usan el linter (USE ...) y el sandbox
+  carpeta_notebooks: mi-proyecto-db   # carpeta de los .dbcnb, desde la raíz
+
+notebooks:                      # notebook canónico por tipo de objeto (puede faltar alguno: se crea al persistir)
+  tablas: "Script de creacion de la base de datos.dbcnb"
+  procedimientos: "Procedimientos Almacenados.dbcnb"
+  funciones: "Funciones.dbcnb"
+  vistas: "Vistas.dbcnb"
+  triggers: "Triggers.dbcnb"
+  eventos: "Eventos.dbcnb"
+  datos_prueba: "Datos de prueba para las tablas principales.dbcnb"
+  pruebas_procedimientos: "Book de pruebas de procedimientos almacenados.dbcnb"
+  pruebas_funciones: "Book de pruebas de funciones.dbcnb"
+  pruebas_vistas: "Book de pruebas de vistas.dbcnb"
+  pruebas_triggers: "Book de pruebas de triggers.dbcnb"
+  pruebas_eventos: "Book de pruebas de eventos.dbcnb"
+
+mcp:
+  base_de_datos: mi-servidor-mcp   # nombre con el que el db-mcp-server está registrado en tus herramientas
+                                  # (usa el mismo nombre en todas)
+
+conexiones:                       # conexiones del db-mcp-server permitidas -> esquema al que apunta cada una;
+                                  # con una sola entrada se usa esa (la declaración aquí es la indicación del
+                                  # usuario); con dos o más, pregunta; con ninguna ({}), ningún paso ejecuta en
+                                  # la base real; nunca una conexión fuera de este mapa, aunque el servidor la exponga
+  mi-servidor-mcp: MiBaseDeDatos
+
+
+herramientas:
+  graphify: false               # los notebooks .dbcnb no forman parte del grafo de código
+
+git:
+  rama_base: null               # null = HEAD; o referencia de rama para comparar
+
+nomenclatura:
+  tablas: "PascalCase"  # estilo de nombres; valores PascalCase | snake_case | camelCase; recomendado PascalCase
+  tablas_plural: true  # nombres de tablas en plural; valores true | false; recomendado true
+  columnas: "PascalCase"  # estilo de nombres; valores PascalCase | snake_case | camelCase; recomendado PascalCase
+  clave_primaria: "{Entidad}Id"  # patrón de clave_primaria; conserva el comodín {Entidad}; recomendado {Entidad}Id
+  prefijo_procedimiento: "sp_"  # prefijo para procedimiento; texto; recomendado sp_
+  prefijo_funcion: "fn_"  # prefijo para funcion; texto; recomendado fn_
+  prefijo_vista: "vw_"  # prefijo para vista; texto; recomendado vw_
+  prefijo_evento: "ev_"  # prefijo para evento; texto; recomendado ev_
+  prefijo_trigger: ["tr_", "trg_"]  # prefijos aceptados de trigger; texto o lista de textos; recomendado [tr_, trg_] para conservar ambas formas existentes
+  prefijo_indice: "idx_"  # prefijo para indice; texto; recomendado idx_
+  prefijo_parametro: "p_"  # prefijo para parametro; texto; recomendado p_
+  prefijo_variable: "v_"  # prefijo para variable; texto; recomendado v_
+
+integraciones:
+  gestion_usuarios: ninguna     # ninguna | organizaciones | aplicacion: gestión de perfiles con Clerk; recomendado ninguna
+
+documentacion:  # obligatorio: configura Open Notebook antes de trabajar
+  url_api: http://localhost:5055  # Dirección HTTP(S) de la API de Open Notebook, sin credenciales ni parámetros.
+  variable_password: null  # Nombre de la variable de entorno de la contraseña, o null si no se usa contraseña; nunca su valor.
+  modelo_chat: null  # ID del modelo de chat configurado en Open Notebook; null usa su predeterminado.
+  modelo_contexto_grande: null  # ID del modelo para contexto grande, o null; no se cambia el modelo global.
+  modelo_transformacion: null  # ID del modelo de transformaciones, o null para su predeterminado.
+  timeout_chat: 120  # segundos de espera de chat/execute y aplicación de transformaciones (1-3600); sin reintentos tras timeout o fallo del servidor

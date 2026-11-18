@@ -1,0 +1,18 @@
+---
+description: Instala perfiles mínimos y entrega su contrato al backend mediante un plan aprobado y pruebas locales.
+---
+<!-- si-archivo integraciones.gestion_usuarios=organizaciones|aplicacion -->
+
+# Añadir gestión de usuarios a la base
+
+1. Primero resuelve el MCP mcp.base_de_datos y una conexión de conexiones en stack.yaml: una se usa, con dos o más pregunta al usuario cuál, ninguna no llama a la base real. Nunca uses otra conexión expuesta. Comprueba con SELECT VERSION() en solo lectura y extrae la primera coincidencia `\d+\.\d+\.\d+`; si falla la conexión declarada o falta la herramienta esperada, informa y detente. Si responde sin versión normalizable, avisa y omite el dato. Después ejecuta `bash .agents/scripts/preflight.sh --workflow add-user-management --fase entrada --dato version_real=<V>` sustituyendo <V> por la versión normalizada; sin conexión/dato ejecuta `bash .agents/scripts/preflight.sh --workflow add-user-management --fase entrada`. No guardes ni pases respuesta cruda. Si bloquea, detente. Crea RUN_DIR fuera de `.agents/`, con manifest de fases y salidas; no uses `/tmp` para artefactos del proyecto.
+2. La fase de diseño (`db-architect`) fija el modelo de stack, nombres físicos según nomenclatura, los cuatro estados y los procedimientos del contrato. Si falta contrato, propone los nombres recomendados y declara ese supuesto. Lista todos los notebooks, objetos y pruebas a escribir; pide aprobación del plan antes de persistir.
+<!-- si integraciones.gestion_usuarios=organizaciones -->
+Pregunta si se usa tabla de organizaciones nueva o existente; para existente pide nombre, PK, columna Clerk y columna de nombre, sin consultar otro repositorio. Esa elección forma parte del plan aprobado.
+<!-- fin -->
+3. Ejecuta `profile-installer` con el plan aprobado y OUT_DIR. Con bloqueado, pide el dato que falta; con fallo, entrega feedback a la misma fase, máximo dos intentos. Sin ok no avances.
+4. La fase de pruebas (`sql-test-engineer`) prepara una copia/sandbox con el esquema y semillas y pruebas con aserciones: catálogo 1–4, creación de dos perfiles con IDs distintos, normalización y correo duplicado, detalle, filtros, cambio de estado, vinculación idempotente y conflicto de otro ClerkUserId. Instala solo imágenes locales, con permiso antes de arrancar el contenedor; no descargues. Ejecuta `python3 -B -E .agents/scripts/sql-sandbox.py run`, `sql-lint.py` y el canario según sus CLI. Copia comandos, exit y salidas literales. Fallo vuelve a implementación con feedback; máximo dos iteraciones, después bloqueado.
+5. La fase de revisión (`sql-code-reviewer`) revisa el diff y los resultados. No persistas con revisión o pruebas fallidas. La fase de persistencia (`sql-writer`) usa `nb-edit.py upsert` para cada objeto y `upsert-test` para cada prueba en los notebooks de stack, sin editar YAML a mano. Añade la celda de semillas aprobada sin incluir datos personales. La fase de documentación de objeto (`sql-object-analyzer`) escribe cada celda Markdown exclusivamente mediante `nb-edit.py upsert-doc` y registra comando y salida. Si falla, vuelve a esa fase con feedback; no declares finalizado.
+6. Vuelve a verificar los notebooks persistidos con lint y sandbox; registra el diff, pruebas, revisión y documentación en manifest. Completa `RUN_DIR/contrato-gestion-usuarios.md` con nombres físicos, tipos, restricciones, estados/IDs, parámetros en orden, alias y las decisiones específicas del modelo aprobado. Entrega al usuario esa ruta para llevarla al back; no abras ni modifiques back/front. No hagas commits automáticos.
+
+Antes de aprobar cualquier plan, sigue `.agents/workflows/references/decisiones-stack.md`; consulta clases, remedios y códigos que resuelve este workflow en `.agents/config/codigos.yaml`.

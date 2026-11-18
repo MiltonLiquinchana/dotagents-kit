@@ -1,0 +1,68 @@
+// ==============================================================================
+// Build de un servicio: plugins del original con las versiones del proyecto.
+// __VERSION_DEP_MANAGEMENT__ y __VERSION_SONARQUBE__ se copian del build.gradle de
+// un servicio existente del repositorio.
+// ==============================================================================
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '<backend.spring_boot>'
+    id 'io.spring.dependency-management' version '__VERSION_DEP_MANAGEMENT__'
+    id("org.sonarqube") version '__VERSION_SONARQUBE__'
+}
+
+group = '__GROUP__'
+version = '0.0.1-SNAPSHOT'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(<backend.java>)
+    }
+}
+
+// si backend.lombok=true
+// El plugin dependency-management da versiones a todas las configuraciones:
+// sin esto, compileOnly y annotationProcessor se quedan sin ellas.
+configurations {
+    compileOnly {
+        extendsFrom annotationProcessor
+    }
+}
+// fin
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+// si backend.persistencia=jpa
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-data-rest'
+// fin
+// si backend.persistencia=jdbc
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-jdbc'
+// fin
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+// si backend.lombok=true
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+// fin
+    developmentOnly 'org.springframework.boot:spring-boot-devtools'
+    runtimeOnly 'com.mysql:mysql-connector-j'
+    testImplementation 'org.springframework.boot:spring-boot-starter-actuator-test'
+    testImplementation 'org.springframework.boot:spring-boot-starter-validation-test'
+// si backend.persistencia=jpa
+    testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test'
+    testImplementation 'org.springframework.boot:spring-boot-starter-data-rest-test'
+// fin
+// si backend.lombok=true
+    testCompileOnly 'org.projectlombok:lombok'
+    testAnnotationProcessor 'org.projectlombok:lombok'
+// fin
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}

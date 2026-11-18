@@ -1,0 +1,9 @@
+# si-archivo integraciones.gestion_usuarios=organizaciones|aplicacion
+# Fragmento del perfil del servicio de gestión, no un archivo adicional de configuración.
+---
+spring:
+  config:
+    activate:
+      on-profile: k8s
+clerk:
+  issuer-uri: __CLERK_ISSUER_URI__

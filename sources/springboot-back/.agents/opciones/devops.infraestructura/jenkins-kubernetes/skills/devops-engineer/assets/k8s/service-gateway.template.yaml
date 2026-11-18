@@ -1,0 +1,46 @@
+# ==============================================================================
+# SERVICIO DE RED DEL GATEWAY EN KUBERNETES (DESARROLLO)
+# Define la exposición interna y externa del API Gateway mediante un Service
+# de tipo NodePort para permitir el enrutamiento centralizado de peticiones.
+# ==============================================================================
+
+apiVersion: v1              # Versión core de la API de Kubernetes para Services
+kind: Service               # Tipo de recurso: Service para exposición de red
+metadata:
+  name: __BASE__-__ENTORNO__-service # Nombre único identificativo del servicio del Gateway
+  labels:                   # Etiquetas organizativas de red y monitoreo
+    app: __BASE__-__ENTORNO__
+    tier: application
+    component: gateway
+    service-type: gateway
+    environment: __CARPETA_ENTORNO__
+
+  annotations:              # Documentación de SRE y propósitos de red
+    kubernetes.io/description: "Gateway client service with service discovery"
+
+spec:
+  # SELECTOR DE PODS:
+  # Redirige el tráfico TCP entrante a los Pods del Gateway que tengan estas etiquetas.
+  selector:
+    app: __BASE__-__ENTORNO__
+    tier: application
+
+  # TIPO DE SERVICIO:
+  # NodePort abre un puerto estático en los nodos del clúster para testing local.
+  type: NodePort
+
+  ports:
+    # PUERTO PRINCIPAL DEL GATEWAY:
+    - name: __BASE__-__ENTORNO__-port
+      port: __PUERTO__            # Puerto expuesto internamente en la red del clúster
+      targetPort: __PUERTO__      # Puerto del contenedor Gateway definido en el Deployment
+      nodePort: __NODE_PORT__       # Puerto TCP externo asignado en el host (rango 30000-32767)
+      protocol: TCP
+
+  # AFINIDAD DE SESIÓN:
+  # 'None' habilita el balanceo round-robin por defecto sin persistencia de IP cliente.
+  sessionAffinity: None
+
+  # POLÍTICA DE TRÁFICO EXTERNO:
+  # 'Cluster' distribuye el tráfico externo entre todos los nodos del clúster de forma uniforme.
+  externalTrafficPolicy: Cluster

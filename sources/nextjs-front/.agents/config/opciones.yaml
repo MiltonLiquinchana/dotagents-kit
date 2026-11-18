@@ -1,0 +1,7 @@
+# Valores permitidos de las marcas `si clave=valor` de este .agents. Solo se declaran aquí:
+# scripts y skills no deben presuponer otro valor. La validación la hace
+# `node .agents/scripts/stack.mjs validate` (clave presente en .agents/stack.yaml y valor en la lista).
+frontend.notificaciones: [react-toastify, ninguna]
+frontend.llamadas_api: [navegador, servidor]
+integraciones.autenticacion: [ninguna, clerk]
+integraciones.gestion_usuarios: [ninguna, organizaciones, aplicacion]

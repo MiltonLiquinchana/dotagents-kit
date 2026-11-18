@@ -1,0 +1,302 @@
+{
+  "version": 1,
+  "comprobaciones": [
+    {
+      "clave": "backend.lombok",
+      "tipo": "bool",
+      "aplica": "sin_gateway",
+      "muestra": "lombok",
+      "completa": "lombok"
+    },
+    {
+      "clave": "backend.persistencia",
+      "tipo": "string",
+      "aplica": "sin_gateway",
+      "muestra": "persistencia",
+      "completa": "persistencia"
+    },
+    {
+      "clave": "backend.group",
+      "tipo": "string",
+      "aplica": "por_servicio",
+      "muestra": "group",
+      "completa": "group"
+    },
+    {
+      "clave": "backend.gateway",
+      "tipo": "nullable_string",
+      "aplica": "proyecto",
+      "muestra": "gateway_declarado",
+      "completa": "gateway_declarado"
+    },
+    {
+      "clave": "backend.cors_origenes",
+      "tipo": "json",
+      "aplica": "solo_gateway",
+      "muestra": "cors_origenes",
+      "completa": "cors_origenes"
+    },
+    {
+      "clave": "integraciones.autenticacion",
+      "tipo": "string",
+      "aplica": "proyecto",
+      "muestra": "autenticacion",
+      "completa": "autenticacion",
+      "codigo": "AUTENTICACION",
+      "codigo_si": {
+        "ninguna": "STACK_CODIGO"
+      },
+      "alcance": "proyecto"
+    },
+    {
+      "clave": "integraciones.gestion_usuarios",
+      "tipo": "string",
+      "aplica": "proyecto",
+      "muestra": "gestion_usuarios",
+      "completa": "gestion_usuarios",
+      "codigo": "GESTION_USUARIOS",
+      "codigo_si": {
+        "ninguna": "STACK_CODIGO"
+      },
+      "alcance": "proyecto"
+    },
+    {
+      "clave": "integraciones.clerk_issuer_uri",
+      "tipo": "string",
+      "aplica": "proyecto",
+      "muestra": "clerk_issuer_uri",
+      "completa": "clerk_issuer_uri"
+    },
+    {
+      "clave": "integraciones.variables_autenticacion",
+      "tipo": "json",
+      "aplica": "proyecto",
+      "muestra": "variables_autenticacion",
+      "completa": "variables_autenticacion"
+    },
+    {
+      "clave": "nomenclatura.clase_aplicacion",
+      "tipo": "string",
+      "aplica": "por_servicio",
+      "muestra": "clase_aplicacion",
+      "completa": "clase_aplicacion",
+      "por_nombre": true
+    },
+    {
+      "clave": "nomenclatura.estrategia_fisica_jpa",
+      "tipo": "string",
+      "aplica": "sin_gateway",
+      "muestra": "estrategia_fisica_jpa",
+      "completa": "estrategia_fisica_jpa"
+    },
+    {
+      "clave": "api_error.campo_mensaje",
+      "tipo": "string",
+      "aplica": "por_servicio",
+      "muestra": "api_error",
+      "completa": "api_error"
+    },
+    {
+      "clave": "api_error.campo_codigo",
+      "tipo": "nullable_string",
+      "aplica": "por_servicio",
+      "muestra": "api_error",
+      "completa": "api_error"
+    },
+    {
+      "clave": "devops.infraestructura",
+      "tipo": "string",
+      "aplica": "proyecto",
+      "muestra": "devops_estado",
+      "completa": "devops_estado",
+      "codigo": "DEVOPS_ESTADO",
+      "alcances_hallazgos": [
+        "proyecto",
+        "por_servicio"
+      ]
+    },
+    {
+      "clave": "devops.slack_canal",
+      "tipo": "nullable_string",
+      "aplica": "proyecto",
+      "muestra": "devops_valores",
+      "completa": "devops_valores",
+      "codigo": "DEVOPS_VALORES",
+      "informativo_vacio": true
+    },
+    {
+      "clave": "devops.credencial_bd_pruebas",
+      "tipo": "nullable_string",
+      "aplica": "proyecto",
+      "muestra": "devops_valores",
+      "completa": "devops_valores",
+      "codigo": "DEVOPS_VALORES",
+      "informativo_vacio": true
+    },
+    {
+      "clave": "devops.registry",
+      "tipo": "string",
+      "aplica": "proyecto",
+      "muestra": "devops_valores",
+      "completa": "devops_valores",
+      "codigo": "DEVOPS_VALORES"
+    },
+    {
+      "clave": "backend.perfil_local",
+      "tipo": "json",
+      "aplica": "por_servicio",
+      "muestra": "perfiles",
+      "completa": "perfiles",
+      "codigo": "PERFILES",
+      "codigo_tocado": "PERFILES_TOCADO",
+      "campo_tocado": "faltan",
+      "grupos_tocado": [
+        "E"
+      ]
+    },
+    {
+      "clave": "devops.entornos.*.rama",
+      "tipo": "string",
+      "aplica": "proyecto",
+      "muestra": "devops_valores",
+      "completa": "devops_valores",
+      "codigo": "DEVOPS_VALORES"
+    },
+    {
+      "clave": "devops.entornos.*.credencial_kubeconfig",
+      "tipo": "string",
+      "aplica": "proyecto",
+      "muestra": "devops_valores",
+      "completa": "devops_valores",
+      "codigo": "DEVOPS_VALORES"
+    },
+    {
+      "clave": "devops.entornos.*.imagen",
+      "tipo": "string",
+      "aplica": "proyecto",
+      "muestra": "devops_valores",
+      "completa": "devops_valores",
+      "codigo": "DEVOPS_VALORES"
+    },
+    {
+      "clave": "devops.entornos.*.desplegar",
+      "tipo": "string",
+      "aplica": "proyecto",
+      "muestra": "devops_valores",
+      "completa": "devops_valores",
+      "codigo": "DEVOPS_VALORES"
+    },
+    {
+      "clave": "devops.entornos.*.replicas",
+      "tipo": "string",
+      "aplica": "proyecto",
+      "muestra": "devops_valores",
+      "completa": "devops_valores",
+      "codigo": "DEVOPS_VALORES"
+    },
+    {
+      "clave": "devops.entornos.*.cpu_peticion",
+      "tipo": "string",
+      "aplica": "proyecto",
+      "muestra": "devops_valores",
+      "completa": "devops_valores",
+      "codigo": "DEVOPS_VALORES"
+    },
+    {
+      "clave": "devops.entornos.*.cpu_limite",
+      "tipo": "string",
+      "aplica": "proyecto",
+      "muestra": "devops_valores",
+      "completa": "devops_valores",
+      "codigo": "DEVOPS_VALORES"
+    },
+    {
+      "clave": "devops.entornos.*.memoria_peticion",
+      "tipo": "string",
+      "aplica": "proyecto",
+      "muestra": "devops_valores",
+      "completa": "devops_valores",
+      "codigo": "DEVOPS_VALORES"
+    },
+    {
+      "clave": "devops.entornos.*.memoria_limite",
+      "tipo": "string",
+      "aplica": "proyecto",
+      "muestra": "devops_valores",
+      "completa": "devops_valores",
+      "codigo": "DEVOPS_VALORES"
+    },
+    {
+      "clave": "devops.entornos.*.nodo_puerto_base",
+      "tipo": "string",
+      "aplica": "proyecto",
+      "muestra": "devops_valores",
+      "completa": "devops_valores",
+      "codigo": "DEVOPS_VALORES"
+    },
+    {
+      "clave": "devops.entornos.*.gateway_nodo_puerto",
+      "tipo": "string",
+      "aplica": "proyecto",
+      "muestra": "devops_valores",
+      "completa": "devops_valores",
+      "codigo": "DEVOPS_VALORES"
+    },
+    {
+      "clave": "devops.entornos.*.cors_origenes",
+      "tipo": "json",
+      "aplica": "proyecto",
+      "muestra": "devops_valores",
+      "completa": "devops_valores",
+      "codigo": "DEVOPS_VALORES"
+    },
+    {
+      "clave": "devops.entornos.*.clerk_issuer_uri",
+      "tipo": "string",
+      "aplica": "proyecto",
+      "muestra": "devops_valores",
+      "completa": "devops_valores",
+      "codigo": "DEVOPS_VALORES"
+    },
+    {
+      "clave": "devops.jenkinsfile",
+      "tipo": "string",
+      "aplica": "proyecto",
+      "muestra": "jenkinsfile",
+      "completa": "jenkinsfile",
+      "codigo": "DEVOPS_VALORES"
+    },
+    {
+      "clave": "devops.nodos.general",
+      "tipo": "string",
+      "aplica": "proyecto",
+      "muestra": "nodos_jenkins",
+      "completa": "nodos_jenkins",
+      "codigo": "DEVOPS_VALORES"
+    },
+    {
+      "clave": "devops.nodos.compilacion",
+      "tipo": "string",
+      "aplica": "proyecto",
+      "muestra": "nodos_jenkins",
+      "completa": "nodos_jenkins",
+      "codigo": "DEVOPS_VALORES"
+    },
+    {
+      "clave": "devops.nodos.docker",
+      "tipo": "string",
+      "aplica": "proyecto",
+      "muestra": "nodos_jenkins",
+      "completa": "nodos_jenkins",
+      "codigo": "DEVOPS_VALORES"
+    },
+    {
+      "clave": "backend.jdk_ruta_desarrollo",
+      "tipo": "nullable_string",
+      "aplica": "por_servicio",
+      "muestra": "jdk_ruta_desarrollo",
+      "completa": "jdk_ruta_desarrollo",
+      "codigo": "STACK_CODIGO"
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+.gradle/
+build/
+logs/
+*.log
+.idea/
+.vscode/
+*.iml
+.classpath
+.project
+.settings/
+.env*
+*.key
+*.pem
+!gradle/wrapper/gradle-wrapper.jar

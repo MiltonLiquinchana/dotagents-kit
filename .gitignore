@@ -1,0 +1,7 @@
+# carpetas locales de trabajo, no se publican
+plans/
+logs/
+sources/logs/
+**/__pycache__/
+*.pyc
+.DS_Store

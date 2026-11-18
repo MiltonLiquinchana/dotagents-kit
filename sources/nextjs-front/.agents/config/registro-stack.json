@@ -1,0 +1,144 @@
+{
+  "version": 1,
+  "comprobaciones": [
+    {
+      "clave": "integraciones.autenticacion",
+      "tipo": "string",
+      "aplica": "proyecto",
+      "muestra": "autenticacion",
+      "completa": "autenticacion",
+      "codigo": "AUTENTICACION",
+      "codigo_si": {
+        "ninguna": "STACK_CODIGO"
+      },
+      "alcance": "proyecto"
+    },
+    {
+      "clave": "integraciones.gestion_usuarios",
+      "tipo": "string",
+      "aplica": "proyecto",
+      "muestra": "gestion_usuarios",
+      "completa": "gestion_usuarios",
+      "codigo": "GESTION_USUARIOS",
+      "codigo_si": {
+        "ninguna": "STACK_CODIGO"
+      },
+      "alcance": "proyecto"
+    },
+    {
+      "clave": "frontend.llamadas_api",
+      "tipo": "string",
+      "aplica": "proyecto",
+      "muestra": "llamadas_api",
+      "completa": "llamadas_api"
+    },
+    {
+      "clave": "frontend.notificaciones",
+      "tipo": "string",
+      "aplica": "proyecto",
+      "muestra": "notificaciones",
+      "completa": "notificaciones"
+    },
+    {
+      "clave": "frontend.gestor_paquetes",
+      "tipo": "string",
+      "aplica": "proyecto",
+      "muestra": "gestor_paquetes",
+      "completa": "gestor_paquetes"
+    },
+    {
+      "clave": "nomenclatura.controlador_interfaz",
+      "tipo": "string",
+      "aplica": "proyecto",
+      "muestra": "nomenclatura",
+      "completa": "nomenclatura",
+      "por_nombre": true
+    },
+    {
+      "clave": "nomenclatura.controlador_implementacion",
+      "tipo": "string",
+      "aplica": "proyecto",
+      "muestra": "nomenclatura",
+      "completa": "nomenclatura",
+      "por_nombre": true
+    },
+    {
+      "clave": "nomenclatura.servicio_interfaz",
+      "tipo": "string",
+      "aplica": "proyecto",
+      "muestra": "nomenclatura",
+      "completa": "nomenclatura",
+      "por_nombre": true
+    },
+    {
+      "clave": "nomenclatura.servicio_implementacion",
+      "tipo": "string",
+      "aplica": "proyecto",
+      "muestra": "nomenclatura",
+      "completa": "nomenclatura",
+      "por_nombre": true
+    },
+    {
+      "clave": "nomenclatura.repositorio_interfaz",
+      "tipo": "string",
+      "aplica": "proyecto",
+      "muestra": "nomenclatura",
+      "completa": "nomenclatura",
+      "por_nombre": true
+    },
+    {
+      "clave": "nomenclatura.repositorio_implementacion",
+      "tipo": "string",
+      "aplica": "proyecto",
+      "muestra": "nomenclatura",
+      "completa": "nomenclatura",
+      "por_nombre": true
+    },
+    {
+      "clave": "nomenclatura.modelo",
+      "tipo": "string",
+      "aplica": "proyecto",
+      "muestra": "nomenclatura",
+      "completa": "nomenclatura",
+      "por_nombre": true
+    },
+    {
+      "clave": "nomenclatura.request",
+      "tipo": "string",
+      "aplica": "proyecto",
+      "muestra": "nomenclatura",
+      "completa": "nomenclatura",
+      "por_nombre": true
+    },
+    {
+      "clave": "nomenclatura.response",
+      "tipo": "string",
+      "aplica": "proyecto",
+      "muestra": "nomenclatura",
+      "completa": "nomenclatura",
+      "por_nombre": true
+    },
+    {
+      "clave": "nomenclatura.archivo_seccion_ui",
+      "tipo": "string",
+      "aplica": "proyecto",
+      "muestra": "nomenclatura",
+      "completa": "nomenclatura",
+      "por_nombre": true
+    },
+    {
+      "clave": "api_error.campo_mensaje",
+      "tipo": "string",
+      "aplica": "proyecto",
+      "muestra": "api_error",
+      "completa": "api_error"
+    },
+    {
+      "clave": "api_error.campo_codigo",
+      "tipo": "nullable_string",
+      "aplica": "proyecto",
+      "muestra": "api_error",
+      "completa": "api_error"
+    }
+  ]
+}

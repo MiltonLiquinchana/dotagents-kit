@@ -1,0 +1,1 @@
+../../code-reviewer/references/sonarqube-gate.md

@@ -1,0 +1,48 @@
+# ==============================================================================
+# APROVISIONAMIENTO FÍSICO DE VOLUMEN (PERSISTENT VOLUME) - __NOMBRE__ (DESARROLLO)
+# Representa el recurso de almacenamiento físico asignado en el nodo para logs de __BASE__.
+# ==============================================================================
+
+apiVersion: v1              # Versión core de la API para almacenamiento persistente
+kind: PersistentVolume      # Tipo de recurso: Volumen persistente a nivel clúster
+metadata:
+  name: __BASE__-__ENTORNO__-volume  # Nombre del PV para el enrutamiento estático del PVC
+  labels:                   # Etiquetas organizativas para la vinculación selectiva
+    app: __BASE__-__ENTORNO__
+    tier: application 
+    component: backend 
+    version: "1.0" 
+    environment: __CARPETA_ENTORNO__
+    storage-type: local 
+    managed-by: manual 
+      
+  annotations:              # Documentación y auditoría descriptiva de SRE
+    description: "Persistent Volume for __BASE__ service storage"
+    backup-policy: "daily"
+    storage.kubernetes.io/provisioner: "kubernetes.io/no-provisioner"
+
+spec:
+  # CAPACIDAD: Capacidad bruta de almacenamiento reservada en el nodo
+  capacity:
+    storage: 5Gi 
+
+  # MODO DE VOLUMEN: Montaje como sistema de archivos estándar
+  volumeMode: Filesystem 
+
+  # MODOS DE ACCESO:
+  # 'ReadWriteOnce' garantiza exclusividad de lectura/escritura a un único Pod.
+  accessModes:
+    - ReadWriteOnce 
+
+  # POLÍTICA DE RECUPERACIÓN:
+  # 'Retain' mantiene el recurso físico y sus datos intactos tras desvincular el PVC.
+  persistentVolumeReclaimPolicy: Retain 
+
+  # CLASE DE ALMACENAMIENTO (STORAGE CLASS):
+  # Enlace manual estático por nombre para eludir aprovisionamiento dinámico.
+  storageClassName: manual 
+
+  # BACKEND DE ALMACENAMIENTO:
+  # Mapeo a directorio físico en el host de desarrollo (Minikube).
+  hostPath:
+    path: "/mnt/data/__BASE__-__ENTORNO__"

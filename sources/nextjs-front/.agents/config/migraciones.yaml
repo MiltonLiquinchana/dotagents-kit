@@ -1,0 +1,2 @@
+# Metadatos de migración; no son parámetros de stack.yaml.
+herramientas.documentacion: [ninguna, "MIGRACION_DOCUMENTACION: Open Notebook es obligatorio. Retira herramientas.documentacion de tu stack.yaml, completa documentacion.url_api y las demás claves documentacion.* según la plantilla y regenera. No se ha escrito ningún archivo."]

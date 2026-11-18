@@ -1,0 +1,123 @@
+{
+  "version": 1,
+  "comprobaciones": [
+    {
+      "clave": "integraciones.gestion_usuarios",
+      "tipo": "string",
+      "aplica": "proyecto",
+      "muestra": "gestion_usuarios",
+      "completa": "gestion_usuarios",
+      "codigo": "GESTION_USUARIOS",
+      "codigo_si": {
+        "ninguna": "STACK_CODIGO"
+      },
+      "alcance": "proyecto"
+    },
+    {
+      "clave": "nomenclatura.tablas",
+      "tipo": "string",
+      "aplica": "proyecto",
+      "muestra": "nomenclatura_nombres",
+      "completa": "nomenclatura_nombres",
+      "por_nombre": true
+    },
+    {
+      "clave": "nomenclatura.tablas_plural",
+      "tipo": "bool",
+      "aplica": "proyecto",
+      "muestra": "nomenclatura_nombres",
+      "completa": "nomenclatura_nombres",
+      "por_nombre": true
+    },
+    {
+      "clave": "nomenclatura.columnas",
+      "tipo": "string",
+      "aplica": "proyecto",
+      "muestra": "nomenclatura_contenido",
+      "completa": "nomenclatura_contenido",
+      "por_nombre": true
+    },
+    {
+      "clave": "nomenclatura.clave_primaria",
+      "tipo": "string",
+      "aplica": "proyecto",
+      "muestra": "nomenclatura_contenido",
+      "completa": "nomenclatura_contenido",
+      "por_nombre": true
+    },
+    {
+      "clave": "nomenclatura.prefijo_procedimiento",
+      "tipo": "string",
+      "aplica": "proyecto",
+      "muestra": "nomenclatura_nombres",
+      "completa": "nomenclatura_nombres",
+      "por_nombre": true
+    },
+    {
+      "clave": "nomenclatura.prefijo_funcion",
+      "tipo": "string",
+      "aplica": "proyecto",
+      "muestra": "nomenclatura_nombres",
+      "completa": "nomenclatura_nombres",
+      "por_nombre": true
+    },
+    {
+      "clave": "nomenclatura.prefijo_vista",
+      "tipo": "string",
+      "aplica": "proyecto",
+      "muestra": "nomenclatura_nombres",
+      "completa": "nomenclatura_nombres",
+      "por_nombre": true
+    },
+    {
+      "clave": "nomenclatura.prefijo_evento",
+      "tipo": "string",
+      "aplica": "proyecto",
+      "muestra": "nomenclatura_nombres",
+      "completa": "nomenclatura_nombres",
+      "por_nombre": true
+    },
+    {
+      "clave": "nomenclatura.prefijo_trigger",
+      "tipo": "string",
+      "aplica": "proyecto",
+      "muestra": "nomenclatura_nombres",
+      "completa": "nomenclatura_nombres",
+      "por_nombre": true
+    },
+    {
+      "clave": "nomenclatura.prefijo_indice",
+      "tipo": "string",
+      "aplica": "proyecto",
+      "muestra": "nomenclatura_contenido",
+      "completa": "nomenclatura_contenido",
+      "por_nombre": true
+    },
+    {
+      "clave": "nomenclatura.prefijo_parametro",
+      "tipo": "string",
+      "aplica": "proyecto",
+      "muestra": "nomenclatura_contenido",
+      "completa": "nomenclatura_contenido",
+      "por_nombre": true
+    },
+    {
+      "clave": "nomenclatura.prefijo_variable",
+      "tipo": "string",
+      "aplica": "proyecto",
+      "muestra": "nomenclatura_contenido",
+      "completa": "nomenclatura_contenido",
+      "por_nombre": true
+    },
+    {
+      "clave": "base_de_datos.version",
+      "tipo": "json",
+      "aplica": "proyecto",
+      "muestra": "version_real",
+      "completa": "version_real",
+      "codigo": "VERSION_REAL",
+      "informativo_vacio": true,
+      "aplicado_cubre": true
+    }
+  ]
+}
