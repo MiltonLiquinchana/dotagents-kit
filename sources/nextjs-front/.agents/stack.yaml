@@ -28,6 +28,7 @@ integraciones:
 
 herramientas:
   codebase_memory: true  # false = este proyecto no usa el grafo de código
+  agent_browser: false  # true = tras la prueba de humo, verifica la feature en el navegador con agent-browser
 
 git:
   rama_base: null               # null = HEAD; o referencia de rama para comparar

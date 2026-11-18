@@ -411,6 +411,8 @@ Si hay varios locks, pregunta cuál vale; el agente podrá quitar el sobrante en
     (paso 1) y lanzar `.agents/workflows/add-authentication.md`
     (back y front). Si su gateway ya tiene seguridad, ese workflow solo informa y no la toca.
 
+20. **(solo front) `herramientas.agent_browser`:** pregunta si quiere verificar la feature en el navegador después de la prueba de humo y si tiene preparada la CLI agent-browser y su navegador. Si no quiere o no tiene la CLI, usa `false`; no instales nada. Con `true`, el preflight comprueba la CLI y su diagnóstico local.
+
 ## Paso 5 — Revisar con el usuario
 
 1. Enseña el `stack.yaml` completo y una tabla de cambios frente a la plantilla: clave, antes, después y

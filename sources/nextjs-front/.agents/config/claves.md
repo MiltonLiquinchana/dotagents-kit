@@ -311,6 +311,28 @@ Estas fichas explican tus decisiones de `stack.yaml`. Los ejemplos se adaptan a 
 
 **Respaldo:** `.agents/scripts/codebase-memory.py`; `.agents/scripts/preflight.py`; `.agents/rules/codebase-memory.md`; `.agents/workflows/codebase-memory.md`; `.agents/scripts/stack.mjs`.
 
+## herramientas.agent_browser
+
+**En resumen:** Decide si se verifica la feature en el navegador con la CLI agent-browser después de la prueba de humo por HTTP. Es opcional: si falta en `stack.yaml`, vale `false`.
+
+**Dónde se ve en tu proyecto:** Se declara en `.agents/stack.yaml`. Con `true`, las dos rutas de `implement-feature` crean `browser-check.md` y `browser-check.png` dentro de la carpeta de ejecución; con `false`, registran la omisión en `manifest.md` sin crear esos archivos.
+
+**Para qué se usa:**
+- El preflight de `implement-feature` comprueba que exista la CLI y ejecuta `agent-browser doctor --offline --quick` con un límite de 60 s. Los demás workflows no hacen esta comprobación.
+- Tras la prueba de humo, se recorre el flujo principal con datos ficticios, se verifican los estados esperados, la consola, las excepciones de JavaScript y las peticiones fallidas, y se guarda una captura.
+- Solo se abre la app local en una sesión aislada. Con autenticación activa se recorren rutas públicas; si el flujo necesita una sesión real o un dominio externo, se registra `bloqueado` para verificación manual.
+- No sustituye las pruebas unitarias, ESLint, SonarQube ni la prueba de humo por HTTP.
+
+**Qué pasa si está mal:** Un valor distinto de `true` o `false` bloquea la lectura de la clave. Con `true`, si falta la CLI o falla su diagnóstico (por ejemplo, falta Chrome for Testing), el preflight informa `HERRAMIENTA`. Si la herramienta no responde tras un reintento, la verificación se bloquea sin consumir iteración; un fallo de la app vuelve al ciclo de corrección.
+
+**Cambiarla después:** Edita `.agents/stack.yaml`; cambiar esta clave no requiere regenerar. Si falta, se usa `false` sin aviso del lector; al regenerar, `actualizar.py` informa «falta en tu stack.yaml: herramientas.agent_browser» sin bloquear la generación.
+
+**Si eliges `false`:** Por ejemplo, compruebas pedidos con las pruebas y la prueba de humo sin abrir un navegador. Recomendado si no tienes preparada la CLI.
+
+**Si eliges `true`:** Por ejemplo, rellenas un pedido ficticio y compruebas la confirmación y los errores del navegador. Necesitas la CLI y su navegador instalados; prepara `npm install -g agent-browser` y `agent-browser install` antes de ejecutar la tarea.
+
+**Respaldo:** `.agents/scripts/preflight_stack.py`; `.agents/rules/agent-browser.md`; `.agents/workflows/references/full-route.md`; `.agents/workflows/references/correction-route.md`; `.agents/scripts/stack.mjs`.
+
 ## git.rama_base
 
 **En resumen:** Hoy la comprobación previa solo lee esta decisión: no la pasa al análisis; para comparar con otra rama debes indicar `--base`.

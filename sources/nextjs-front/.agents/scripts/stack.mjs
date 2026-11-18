@@ -34,7 +34,7 @@ const REQUIRED = [
   'frontend.notificaciones', 'frontend.llamadas_api',
   'sonarqube.url', 'sonarqube.project_key',
   'integraciones.autenticacion', 'mcp.sonarqube',
-  'herramientas.codebase_memory', 'git.rama_base',
+  'herramientas.codebase_memory', 'herramientas.agent_browser', 'git.rama_base',
 
 ];
 
@@ -263,6 +263,10 @@ function validarDatos(data, meta, opciones = cargarOpciones()) {
   if (herramientas && typeof herramientas === 'object' && !Array.isArray(herramientas) &&
       !Object.hasOwn(herramientas, 'codebase_memory') && Object.hasOwn(herramientas, 'graphify')) {
     herramientas.codebase_memory = herramientas.graphify;
+  }
+  if (herramientas && typeof herramientas === 'object' && !Array.isArray(herramientas)) {
+    if (!Object.hasOwn(herramientas, 'agent_browser')) herramientas.agent_browser = false;
+    else if (typeof herramientas.agent_browser !== 'boolean') bloqueado('herramientas.agent_browser debe ser true o false');
   }
   validarCondicionales(data, meta);
   if (!('proyecto' in data) || data.proyecto === null || typeof data.proyecto !== 'object' || data.proyecto === undefined) {

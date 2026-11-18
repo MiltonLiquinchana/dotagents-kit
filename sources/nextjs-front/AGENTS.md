@@ -18,6 +18,7 @@ proyecto). Los marcadores `<clave>` que aparezcan en skills, reglas o workflows 
 - **Autenticación**: Si `integraciones.autenticacion` de `.agents/stack.yaml` no es `ninguna`, consulta la sección de autenticación de `.agents/rules/project.md` antes de tocar ese código y apóyate en la skill externa declarada ahí; si `herramientas.codebase_memory` de `.agents/stack.yaml` es `true`, actualiza el grafo con `python3 -I -B .agents/scripts/codebase-memory.py --indexar`.
 
 ## Herramientas de consulta
+- **agent-browser**: Si `herramientas.agent_browser` de `.agents/stack.yaml` es `true`, verifica la feature en el navegador tras la prueba de humo. Detalle en `.agents/rules/agent-browser.md`.
 - Las herramientas de SonarQube se llaman con `.agents/scripts/sonar-mcp.mjs`, no con el MCP directamente.
 - **Codebase Memory**: Si `herramientas.codebase_memory` de `.agents/stack.yaml` es `true`, consulta el grafo (`search_graph`, `trace_path`, `get_code_snippet` y `get_file_outline`, con el proyecto resuelto por `python3 -I -B .agents/scripts/codebase-memory.py --resolver`) para comprender relaciones y arquitectura de código. Detalle en `.agents/rules/codebase-memory.md`.
 - **tgrep**: Consulta notas de contexto e historial vinculante de correcciones previas en `knowledge-base/`. Detalle en `.agents/rules/tgrep.md`.
@@ -29,6 +30,7 @@ proyecto). Los marcadores `<clave>` que aparezcan en skills, reglas o workflows 
 | `.agents/rules/project.md` | Descripción de este proyecto: qué es, decisiones propias, integraciones y archivos sensibles y protegidos |
 | `.agents/rules/architecture-rules.md` | Reglas de Clean Architecture, TypeScript, calidad y aislamiento de re-renders |
 | `.agents/rules/performance-budget.md` | Presupuesto y métricas de rendimiento frontend (LCP, TBT, bundle) |
+| `.agents/rules/agent-browser.md` | Verificación de la app local en el navegador, aislamiento, evidencia y criterios de resultado |
 | `.agents/rules/codebase-memory.md` | Guía de uso y reglas del grafo de conocimiento de código |
 | `.agents/rules/knowledge-base.md` | Estructura, trazabilidad y mantenimiento de notas en `knowledge-base/` |
 | `.agents/rules/tgrep.md` | Búsqueda y consulta de historial de decisiones y correcciones con tgrep |

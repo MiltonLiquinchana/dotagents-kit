@@ -3,9 +3,10 @@ import json
 import os
 from pathlib import Path
 import shutil
+import subprocess
 
 TOOLS = ['node']
-KEYS = ['sonarqube.url', 'frontend.eslint_config', 'frontend.gestor_paquetes']
+KEYS = ['sonarqube.url', 'frontend.eslint_config', 'frontend.gestor_paquetes', 'herramientas.agent_browser']
 SOURCES_PREFIX = 'nextjs-'
 CONTEXT_CODE = 'STACK_INVALIDO'
 EXPENSIVE = ['LINTER', 'SONARQUBE']
@@ -43,6 +44,27 @@ def contexto(p, ctx, params):
 
 
 def estaticos(p, ctx, params):
+    if p.workflow == 'implement-feature' and params['herramientas.agent_browser'] == 'true':
+        cli = shutil.which('agent-browser')
+        if not cli:
+            p.add('HERRAMIENTA', 'CLI agent-browser no encontrada en PATH. Instálala con: npm install -g agent-browser && agent-browser install')
+        else:
+            env = os.environ.copy()
+            env['AGENT_BROWSER_NO_VERSION_CHECK'] = '1'
+            try:
+                result = subprocess.run([cli, 'doctor', '--offline', '--quick'],
+                                        capture_output=True, text=True, encoding='utf-8',
+                                        errors='replace', timeout=60, env=env)
+                if result.returncode:
+                    output = '\n'.join(s for s in (result.stdout, result.stderr) if s)
+                    p.add('HERRAMIENTA', 'agent-browser doctor falló: ' + (output or 'exit ' + str(result.returncode)))
+            except subprocess.TimeoutExpired as error:
+                def text(value):
+                    return value.decode('utf-8', errors='replace') if isinstance(value, bytes) else value or ''
+                output = '\n'.join(s for s in (text(error.stdout), text(error.stderr)) if s)
+                p.add('HERRAMIENTA', 'agent-browser doctor falló: tiempo agotado (60 s)' + ('\n' + output if output else ''))
+            except OSError as error:
+                p.add('HERRAMIENTA', 'agent-browser doctor falló: ' + str(error))
     for tool in ['curl', 'npx' if p.gestor == 'npm' else p.gestor]:
         if not shutil.which(tool): p.add('HERRAMIENTA', tool + ' no encontrado en PATH.')
     if not eslint_local(p):

@@ -229,10 +229,26 @@ Tras la revisión y antes del commit:
 3. Para el proceso y comprueba que el puerto queda libre.
 
 - **Según el resultado**:
-  - `estado: ok` → Paso 13.
+  - `estado: ok` → Paso 12.6.
   - `estado: fallo` (la API responde conforme a su contrato y el HTML no muestra el estado esperado): registra la respuesta literal en `RUN_DIR/smoke-test.md`, escribe `RUN_DIR/feedback.md` con lo observado vs lo esperado y vuelve al Paso 6 (consume 1 iteración del ciclo de corrección).
   - `estado: bloqueado` (conexión a la API rechazada, tiempo agotado o respuesta ajena al contrato de la API, por ejemplo otro servidor en ese puerto): registra la causa literal y la URL que usó la app en `RUN_DIR/smoke-test.md`, detente e informa sin consumir iteración.
   - `estado: bloqueado` (falta la configuración local): detente con el mensaje exacto "copia `.env.example` a `.env.local`".
+
+## Paso 12.6 — Verificación en el navegador
+
+- **Ejecución**: la hace el propio workflow, no un subagente. Sigue `.agents/rules/agent-browser.md`. Registra el resultado en `RUN_DIR/browser-check.md`: estado, URL, acciones hechas, resultado observado frente al esperado, salida literal de `console`, `errors` y peticiones fallidas, y hosts afectados si los hay. Guarda la captura en `RUN_DIR/browser-check.png`.
+- **Condición**: solo si `[ "$(node .agents/scripts/stack.mjs get herramientas.agent_browser)" = true ]`. Si no, registra en `RUN_DIR/manifest.md` la fila de este paso con `estado: omitido` y motivo `herramientas.agent_browser≠true`; no crees `browser-check.*` y pasa a Paso 13.
+
+1. Arranca la app como en la prueba de humo, con el mismo build y arranque de producción del gestor declarado, sin pasar variables de configuración por la línea de comandos.
+2. Usa la sesión `kit-<nombre de RUN_DIR>`: toma el nombre de la carpeta de ejecución y sustituye los caracteres distintos de letras, números, `-` y `_` por `-`. Exporta `AGENT_BROWSER_NO_VERSION_CHECK=1`, limita cada orden a 60 s y abre la URL local con `--allowed-domains localhost,127.0.0.1`; incluye `--session <nombre>` en cada orden. Recorre el flujo principal de la feature descrito en `RUN_DIR/ux-spec.md` (estados de éxito, carga, vacío y error que apliquen) o, si no existe, en `RUN_DIR/approved-plan.md`. Usa `snapshot -i`, interacciones y esperas conforme a la regla; renueva las referencias tras cada navegación o cambio del DOM. Con autenticación activa solo recorre rutas públicas.
+3. Comprueba la consola, las excepciones y las peticiones fallidas con `console`, `errors`, `network requests --status 400-499` y `network requests --status 500-599`. Conserva sus salidas literales y aplica el orden de decisión de la regla.
+4. Obtén `screenshot --full RUN_DIR/browser-check.png`, usando la ruta concreta de la carpeta de ejecución. Si un bloqueo impide la captura o alguna consulta, registra la causa literal en `RUN_DIR/browser-check.md` y conserva lo disponible.
+5. Ejecuta `close` de la sesión, para la app y comprueba que el puerto queda libre. En cualquier salida, también si una orden falla a mitad, ejecuta este cierre y detén la app; registra cualquier fallo de cierre. Registra la fila del paso en `RUN_DIR/manifest.md`.
+
+- **Según el resultado** (primero `bloqueado`, después `fallo`, finalmente `ok`, conforme a la regla):
+  - `estado: ok` → Paso 13.
+  - `estado: bloqueado` → registra la causa literal y los hosts afectados en `RUN_DIR/browser-check.md`, cierra la sesión, para la app, detente e informa sin consumir iteración. Si requiere sesión real, registra «requiere sesión real; verificación manual».
+  - `estado: fallo` → escribe `RUN_DIR/feedback.md` con lo observado frente a lo esperado y vuelve a Paso 6 (consume 1 iteración del ciclo de corrección), tras cerrar la sesión y parar la app.
 
 ## Paso 13 — Confirmar cambios atómicamente en Git
 

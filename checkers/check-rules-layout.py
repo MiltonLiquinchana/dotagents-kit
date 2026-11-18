@@ -28,7 +28,7 @@ VALID_TRIGGERS = {"always_on", "model_decision", "glob", "manual"}
 
 # Nombres de reglas que existieron antes de reorganizarlas: si se citan sin ruta, son referencias rotas en potencia.
 KNOWN_RULE_NAMES = {
-    "rules", "architecture-rules", "sonarqube-compliance", "performance-budget",
+    "rules", "architecture-rules", "sonarqube-compliance", "performance-budget", "agent-browser",
     "sql-quality-gate", "tgrep", "graphify", "codebase-memory", "knowledge-base", "project", "global",
 }
 

@@ -40,6 +40,7 @@ DOCUMENTACION = ["documentacion." + k for k in ("url_api", "variable_password", 
 COMMON = DOCUMENTACION + ["version_esquema", "proyecto.nombre", "proyecto.stack", "herramientas.codebase_memory", "git.rama_base"]
 REQUIRED = {
     "nextjs": COMMON + [
+        "herramientas.agent_browser",
         "frontend.framework", "frontend.version", "frontend.gestor_paquetes", "frontend.eslint_config",
         "sonarqube.url", "sonarqube.project_key", "integraciones.autenticacion", "mcp.sonarqube",
     ],

@@ -78,6 +78,7 @@ sustitúyela en cada comando y prompt.
 | API | Operaciones que un programa ofrece a otro. |
 | Clerk | Servicio que permite iniciar sesión y verificar quién hace una petición. |
 | Codebase Memory | Herramienta que construye un grafo de relaciones del código para consultarlo. |
+| agent-browser | CLI que permite recorrer la app local en un navegador, comprobar errores y guardar una captura. |
 | Gateway | Servicio de entrada que dirige peticiones hacia otros servicios. |
 | Context-path | Prefijo de URL de un servicio, por ejemplo `/pedidos`. |
 | Artefactos de DevOps | Archivos para construir o desplegar: Dockerfile, pipeline y manifiestos. |
@@ -120,6 +121,7 @@ Instala lo necesario para tu stack antes de lanzar sus workflows. Las opciones s
 | SonarQube y [servidor MCP de SonarQube](https://github.com/SonarSource/sonarqube-mcp-server) | Análisis, comprobaciones con defectos conocidos y gate diferencial | Obligatorios; runtime de Java en la versión requerida por el README del servidor; configura el nombre de `mcp.sonarqube` o las variables de entorno de [Conexión, permisos y SonarQube](#conexión-permisos-y-sonarqube) | Back y front |
 | JDK y wrapper Gradle ejecutable | Compilar y comprobar toolchains | Obligatorios; JDK de la versión `backend.java` que Gradle detecta (`./gradlew javaToolchains`) | Back |
 | npm/`npx`, pnpm o Yarn y ESLint local | Dependencias y linter | El gestor de `frontend.gestor_paquetes`; con npm se comprueba `npx`; Yarn admite PnP | Front |
+| [agent-browser](https://github.com/vercel-labs/agent-browser) | Verificación en el navegador; instala con `npm install -g agent-browser` y después `agent-browser install` | Con `herramientas.agent_browser: true` | Front |
 | PyYAML en el Python del sistema (p. ej. `python3-yaml`); los scripts no cargan el site-packages del usuario | Leer y mantener notebooks `.dbcnb` | Obligatorio | SQL |
 | Docker o Podman operativo e imagen MySQL local | Sandbox de pruebas | Obligatorios para el sandbox; imagen alineada con la versión del stack, sin descarga automática | SQL |
 | [`db-mcp-server`](https://github.com/FreePeak/db-mcp-server) | Consultar o ejecutar sobre la base real autorizada | Necesario para pasos con base real; con `conexiones: {}` se detienen esos pasos | SQL |
@@ -310,6 +312,7 @@ visuales; la **de corrección** hace ajustes puntuales sin estructura nueva o co
 Pregunta si hay duda y pide aprobar el plan. Si falta núcleo, propone bootstrap y espera tu respuesta.
 No repara infraestructura ajena; rediseñar exige confirmación. Incluye commit atómico tras comprobar;
 Codebase Memory sí se condiciona a su opción en este workflow.
+Con `herramientas.agent_browser: true`, añade una verificación opcional en el navegador después de la prueba de humo por HTTP: recorre la feature, comprueba consola, excepciones y peticiones fallidas y guarda una captura; las dependencias externas o una sesión real que impidan completarla se informan como bloqueo.
 
 #### `add-authentication.md`
 

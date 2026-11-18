@@ -57,7 +57,7 @@ En caso de duda, pregunta: "¿Esto es un ajuste puntual o involucra estructura n
   - **Enmiendas**: las enmiendas del plan aprobadas por el usuario no cuentan como iteraciones de corrección; tienen su propio tope de 2 por feature (ver la enmienda del plan aprobado en la Ruta Completa).
   - Antes de re-invocar una skill para corrección, el workflow mueve el artefacto previo a `history/<artefacto>.<n>.md` y escribe `RUN_DIR/feedback.md` con los errores o correcciones requeridas.
   - Tras el reintento exitoso, borra `feedback.md`.
-  - Cada vez que cambie el código se vuelve a ejecutar el tramo aplicable completo: persistencia, actualización del grafo, documentación y pruebas. Los resultados de una vuelta anterior no son válidos para el código actualizado.
+  - Cada vez que cambie el código se vuelve a ejecutar el tramo aplicable completo: persistencia, actualización del grafo, documentación y pruebas y, si está activa, la verificación en el navegador. Los resultados de una vuelta anterior no son válidos para el código actualizado.
   - Al agotar las 3 iteraciones sin aprobación, detén el flujo sin reintentar automáticamente e informa al usuario del estado del working tree.
 - **Rechazo por implementación (`CHANGES REQUIRED` + `IMPLEMENTACION`)**:
   - Si viene de compilación (`write-report.md`), pruebas (`test-report.md`) o revisión (`review.md`), el workflow escribe `feedback.md` y vuelve al paso de desarrollo.
