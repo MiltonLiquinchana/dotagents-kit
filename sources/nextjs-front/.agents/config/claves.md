@@ -320,7 +320,21 @@ Estas fichas explican tus decisiones de `stack.yaml`. Los ejemplos se adaptan a 
 **Para qué se usa:**
 - El preflight de `implement-feature` comprueba que exista la CLI y ejecuta `agent-browser doctor --offline --quick` con un límite de 60 s. Los demás workflows no hacen esta comprobación.
 - Tras la prueba de humo, se recorre el flujo principal con datos ficticios, se verifican los estados esperados, la consola, las excepciones de JavaScript y las peticiones fallidas, y se guarda una captura.
-- Solo se abre la app local en una sesión aislada. Con autenticación activa se recorren rutas públicas; si el flujo necesita una sesión real o un dominio externo, se registra `bloqueado` para verificación manual.
+- Solo se abre la app local, en una sesión limpia; la app carga lo que necesita de otros hosts. Los datos que se crean son ficticios, con el prefijo `kit-agente`, y quedan listados en la evidencia.
+<!-- si integraciones.autenticacion=clerk -->
+- Con Clerk se inicia sesión con el usuario de prueba `kit-agente+clerk_test@example.com` (código `424242`) de la instancia de desarrollo; si Clerk no es de desarrollo, no acepta el código, pide un desafío anti-bots o el usuario no existe con registro por invitación, el paso queda `bloqueado` con la acción que debes hacer. Las invitaciones a direcciones `+clerk_test` se prueban (Clerk no envía el correo); aceptar una invitación queda para verificación manual.
+
+### Usuario de prueba de Clerk
+
+1. Usa la instancia de desarrollo, con el Test mode activo (lo está por defecto) y el código por correo.
+2. Si la instancia solo admite invitados, crea `kit-agente+clerk_test@example.com` en el panel de la instancia de desarrollo (Users → Create user).
+3. Añádelo a la organización con el rol que necesiten las pantallas.
+4. Si la app exige un perfil local activo para el usuario, créalo en la base de desarrollo.
+
+- Las invitaciones a direcciones `+clerk_test` se prueban: Clerk no envía correos a direcciones de prueba.
+- Aceptar una invitación necesita el enlace del correo, que no llega; queda para verificación manual.
+- Quien comparta la instancia comparte también el usuario.
+<!-- fin -->
 - No sustituye las pruebas unitarias, ESLint, SonarQube ni la prueba de humo por HTTP.
 
 **Qué pasa si está mal:** Un valor distinto de `true` o `false` bloquea la lectura de la clave. Con `true`, si falta la CLI o falla su diagnóstico (por ejemplo, falta Chrome for Testing), el preflight informa `HERRAMIENTA`. Si la herramienta no responde tras un reintento, la verificación se bloquea sin consumir iteración; un fallo de la app vuelve al ciclo de corrección.
@@ -329,7 +343,10 @@ Estas fichas explican tus decisiones de `stack.yaml`. Los ejemplos se adaptan a 
 
 **Si eliges `false`:** Por ejemplo, compruebas pedidos con las pruebas y la prueba de humo sin abrir un navegador. Recomendado si no tienes preparada la CLI.
 
-**Si eliges `true`:** Por ejemplo, rellenas un pedido ficticio y compruebas la confirmación y los errores del navegador. Necesitas la CLI y su navegador instalados; prepara `npm install -g agent-browser` y `agent-browser install` antes de ejecutar la tarea.
+**Si eliges `true`:** Por ejemplo, rellenas un pedido ficticio y compruebas la confirmación y los errores del navegador. Necesitas la CLI y su navegador instalados; prepara `npm install -g agent-browser` y `agent-browser install` antes de ejecutar la tarea. La app debe apuntar a una API de desarrollo: se escriben en ella datos de prueba.
+<!-- si integraciones.autenticacion=clerk -->
+Usa claves de la instancia de desarrollo, con el Test mode activo (lo está por defecto) y el código por correo.
+<!-- fin -->
 
 **Respaldo:** `.agents/scripts/preflight_stack.py`; `.agents/rules/agent-browser.md`; `.agents/workflows/references/full-route.md`; `.agents/workflows/references/correction-route.md`; `.agents/scripts/stack.mjs`.
 

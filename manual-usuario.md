@@ -312,7 +312,20 @@ visuales; la **de corrección** hace ajustes puntuales sin estructura nueva o co
 Pregunta si hay duda y pide aprobar el plan. Si falta núcleo, propone bootstrap y espera tu respuesta.
 No repara infraestructura ajena; rediseñar exige confirmación. Incluye commit atómico tras comprobar;
 Codebase Memory sí se condiciona a su opción en este workflow.
-Con `herramientas.agent_browser: true`, añade una verificación opcional en el navegador después de la prueba de humo por HTTP: recorre la feature, comprueba consola, excepciones y peticiones fallidas y guarda una captura; las dependencias externas o una sesión real que impidan completarla se informan como bloqueo.
+Con `herramientas.agent_browser: true`, añade una verificación en el navegador después de la prueba de humo por HTTP: recorre la feature como una persona, comprueba consola, excepciones y peticiones fallidas y guarda una captura. La app debe apuntar a una API de desarrollo, porque se crean datos de prueba con el prefijo `kit-agente`. Con Clerk, inicia sesión con el usuario de prueba `kit-agente+clerk_test@example.com` (código `424242`), que necesita una instancia de desarrollo con el Test mode y el código por correo; si la protección contra bots lo impide, la tarea se detiene y te dice qué cambiar.
+
+##### Usuario de prueba de Clerk
+
+1. Usa la instancia de desarrollo, con el Test mode activo (lo está por defecto) y el código por correo.
+2. Si la instancia solo admite invitados, crea `kit-agente+clerk_test@example.com` en el panel de la instancia de desarrollo (Users → Create user).
+3. Añádelo a la organización con el rol que necesiten las pantallas.
+4. Si la app exige un perfil local activo para el usuario, créalo en la base de desarrollo.
+
+- Las invitaciones a direcciones `+clerk_test` se prueban: Clerk no envía correos a direcciones de prueba.
+- Aceptar una invitación necesita el enlace del correo, que no llega; queda para verificación manual.
+- Quien comparta la instancia comparte también el usuario.
+
+Si falta el usuario de prueba, la tarea se detiene y te remite a la ficha `herramientas.agent_browser` de `.agents/config/claves.md` de tu proyecto, apartado «Usuario de prueba de Clerk».
 
 #### `add-authentication.md`
 

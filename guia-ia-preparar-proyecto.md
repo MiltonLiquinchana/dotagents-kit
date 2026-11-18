@@ -411,7 +411,7 @@ Si hay varios locks, pregunta cuál vale; el agente podrá quitar el sobrante en
     (paso 1) y lanzar `.agents/workflows/add-authentication.md`
     (back y front). Si su gateway ya tiene seguridad, ese workflow solo informa y no la toca.
 
-20. **(solo front) `herramientas.agent_browser`:** pregunta si quiere verificar la feature en el navegador después de la prueba de humo y si tiene preparada la CLI agent-browser y su navegador. Si no quiere o no tiene la CLI, usa `false`; no instales nada. Con `true`, el preflight comprueba la CLI y su diagnóstico local.
+20. **(solo front) `herramientas.agent_browser`:** pregunta si quiere verificar la feature en el navegador después de la prueba de humo y si tiene preparada la CLI agent-browser y su navegador. Si no quiere o no tiene la CLI, usa `false`; no instales nada. Con `true`, el preflight comprueba la CLI y su diagnóstico local. La app debe apuntar a una API de desarrollo. Con Clerk, la instancia de desarrollo necesita el Test mode y el código por correo; los pasos únicos para preparar el usuario de prueba están en el apartado «Usuario de prueba de Clerk» del manual (no los repitas; indícale dónde están); con la protección contra bots activa, el paso queda `bloqueado` con la acción para el usuario.
 
 ## Paso 5 — Revisar con el usuario
 
