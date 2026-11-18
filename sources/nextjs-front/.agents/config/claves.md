@@ -343,7 +343,7 @@ Estas fichas explican tus decisiones de `stack.yaml`. Los ejemplos se adaptan a 
 
 **Si eliges `false`:** Por ejemplo, compruebas pedidos con las pruebas y la prueba de humo sin abrir un navegador. Recomendado si no tienes preparada la CLI.
 
-**Si eliges `true`:** Por ejemplo, rellenas un pedido ficticio y compruebas la confirmación y los errores del navegador. Necesitas la CLI y su navegador instalados; prepara `npm install -g agent-browser` y `agent-browser install` antes de ejecutar la tarea. La app debe apuntar a una API de desarrollo: se escriben en ella datos de prueba.
+**Si eliges `true`:** Por ejemplo, rellenas un pedido ficticio y compruebas la confirmación y los errores del navegador. Necesitas la CLI y su navegador instalados; prepara `npm install -g agent-browser` y `agent-browser install` antes de ejecutar la tarea. La app debe apuntar a una API de desarrollo: se escriben en ella datos de prueba. Por defecto el navegador no muestra ventana; para verlo en vivo, exporta `AGENT_BROWSER_HEADED=1` en la terminal desde la que lanzas la IA o pídele que lo abra con ventana.
 <!-- si integraciones.autenticacion=clerk -->
 Usa claves de la instancia de desarrollo, con el Test mode activo (lo está por defecto) y el código por correo.
 <!-- fin -->

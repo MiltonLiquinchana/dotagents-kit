@@ -312,7 +312,7 @@ visuales; la **de corrección** hace ajustes puntuales sin estructura nueva o co
 Pregunta si hay duda y pide aprobar el plan. Si falta núcleo, propone bootstrap y espera tu respuesta.
 No repara infraestructura ajena; rediseñar exige confirmación. Incluye commit atómico tras comprobar;
 Codebase Memory sí se condiciona a su opción en este workflow.
-Con `herramientas.agent_browser: true`, añade una verificación en el navegador después de la prueba de humo por HTTP: recorre la feature como una persona, comprueba consola, excepciones y peticiones fallidas y guarda una captura. La app debe apuntar a una API de desarrollo, porque se crean datos de prueba con el prefijo `kit-agente`. Con Clerk, inicia sesión con el usuario de prueba `kit-agente+clerk_test@example.com` (código `424242`), que necesita una instancia de desarrollo con el Test mode y el código por correo; si la protección contra bots lo impide, la tarea se detiene y te dice qué cambiar.
+Con `herramientas.agent_browser: true`, añade una verificación en el navegador después de la prueba de humo por HTTP: recorre la feature como una persona, comprueba consola, excepciones y peticiones fallidas y guarda una captura. La app debe apuntar a una API de desarrollo, porque se crean datos de prueba con el prefijo `kit-agente`. Con Clerk, inicia sesión con el usuario de prueba `kit-agente+clerk_test@example.com` (código `424242`), que necesita una instancia de desarrollo con el Test mode y el código por correo; si la protección contra bots lo impide, la tarea se detiene y te dice qué cambiar. Por defecto el navegador no muestra ventana; para verlo en vivo, exporta `AGENT_BROWSER_HEADED=1` en la terminal desde la que lanzas la IA o pídele que lo abra con ventana.
 
 ##### Usuario de prueba de Clerk
 

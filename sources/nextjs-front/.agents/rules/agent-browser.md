@@ -19,7 +19,7 @@ description: Verify the running app in a browser with the agent-browser CLI.
   En el inicio de sesión de Clerk también se admite un host `https` que termine en `.accounts.dev`.
 <!-- fin -->
   Si hay más de una pestaña o si el host de la URL no es uno de los admitidos, registra el host, ejecuta `close` y el resultado es `bloqueado`.
-- Exporta `AGENT_BROWSER_NO_VERSION_CHECK=1`. Toda orden lleva `--session <nombre>`, con un nombre único por ejecución compuesto de letras, números, `-` y `_`. Nunca uses `--profile`, `--restore`, `--state`, `--cdp` ni `--auto-connect`. Nunca uses `eval`, `cookies`, `storage`, `network route`, `network request`, `network har`, `read`, `connect`, `set credentials` ni `set headers`. Cada ejecución empieza en una sesión limpia, sin datos guardados de otras. Nunca uses cuentas reales ni credenciales en órdenes o archivos.
+- Exporta `AGENT_BROWSER_NO_VERSION_CHECK=1`. Si el usuario pide ver el navegador, añade `--headed` a la primera orden de la sesión; si ya exportó `AGENT_BROWSER_HEADED=1`, no la quites. Con ventana o sin ella, el resto de la regla no cambia. Toda orden lleva `--session <nombre>`, con un nombre único por ejecución compuesto de letras, números, `-` y `_`. Nunca uses `--profile`, `--restore`, `--state`, `--cdp` ni `--auto-connect`. Nunca uses `eval`, `cookies`, `storage`, `network route`, `network request`, `network har`, `read`, `connect`, `set credentials` ni `set headers`. Cada ejecución empieza en una sesión limpia, sin datos guardados de otras. Nunca uses cuentas reales ni credenciales en órdenes o archivos.
 <!-- si integraciones.autenticacion=clerk -->
   La única excepción es el usuario de prueba de Clerk de esta regla.
 <!-- fin -->
