@@ -21,7 +21,7 @@
       "tecnologia": "spring-boot",
       "tipo": "notas",
       "url": "https://github.com/spring-projects/spring-boot/releases/tag/v{version}",
-      "secciones": "Notas del parche exacto",
+      "secciones": "Notas del parche exacto; si el verificador no atribuye la tecnología y versión principal del parche exacto, queda excluida: revisa la fuente y, si corresponde, cárgala como fuente aportada con --usuario-url --confirmar-correspondencia, tras aprobar su hash. El tag por sí solo no sustituye la validación",
       "estado": "por verificar"
     },
     {
@@ -69,15 +69,15 @@
       "tecnologia": "lombok",
       "tipo": "notas",
       "url": "https://github.com/projectlombok/lombok/releases/tag/v{version}",
-      "secciones": "Compatibilidad y cambios de Lombok",
+      "secciones": "Compatibilidad y cambios de Lombok; si el verificador no atribuye la tecnología y versión principal del parche exacto, queda excluida: revisa la fuente y, si corresponde, cárgala como fuente aportada con --usuario-url --confirmar-correspondencia, tras aprobar su hash. El tag por sí solo no sustituye la validación",
       "estado": "por verificar"
     },
     {
       "id": "B10",
       "tecnologia": "spring-cloud",
       "tipo": "notas",
-      "url": "https://github.com/spring-cloud/spring-cloud-release/releases/tag/v{version}",
-      "secciones": "Notas de la BOM, solo cuando se usa Cloud",
+      "url": "https://raw.githubusercontent.com/spring-cloud/spring-cloud-release/v{version}/docs/modules/ROOT/pages/index.adoc",
+      "secciones": "Notas de la BOM, solo cuando se usa Cloud; si el verificador no atribuye la versión del tren (no la versión de Spring Boot referenciada), queda excluida: revisa la fuente y, si corresponde, cárgala como fuente aportada con --usuario-url --confirmar-correspondencia, tras aprobar su hash. El tag por sí solo no sustituye la validación",
       "estado": "por verificar"
     },
     {

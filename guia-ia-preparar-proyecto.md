@@ -225,6 +225,12 @@ El issuer de Clerk no se busca. Registra los comandos fallidos o sin salida para
 
 ## Paso 4 — Preguntar
 
+**No hay pregunta sin explicación.** El mensaje que contiene la pregunta lleva, para cada clave que
+pregunta, el bloque de su ficha: qué significa, dónde se ve, para qué se usa, qué pasa si está mal,
+opciones con su párrafo `**Si …:**` y cómo cambiarla después. También se aplica a preguntas agrupadas
+(el bloque de cada clave) y seguidas. La propia pregunta resume en una línea **para qué se usa** y cada
+opción dice su consecuencia. En una confirmación basta repetir para qué se usa y la consecuencia.
+
 Muestra una vez el glosario «Palabras que usan estas fichas» de `<SOURCES>/config/claves.md` antes de la primera pregunta.
 En SQL, lista primero los nombres de notebooks y pregunta cuál contiene datos de prueba: ese y sus alias
 no se abren nunca. Si duda, excluye también nombres con `datos`, `seed` o `prueba` (sin distinguir mayúsculas),
@@ -233,8 +239,7 @@ Si hay varios locks, pregunta cuál vale; el agente podrá quitar el sobrante en
 
 1. **Avanza sección por sección; dentro de cada una, haz una pregunta por decisión y espera su respuesta
    antes de la siguiente.** Sigue el orden de `stack.yaml`, salvo en back y front: `autenticacion` antes
-   de `gestion_usuarios`, por sus requisitos. Explica cada clave con su ficha y lo detectado:
-   qué significa, dónde se ve, para qué se usa, qué pasa si está mal, opciones y cómo cambiarla después.
+   de `gestion_usuarios`, por sus requisitos. Aplica la condición de explicación anterior con la ficha y lo detectado.
    No preguntes `version_esquema`, `proyecto.stack`, `backend.build`, `frontend.framework`,
    `base_de_datos.motor` ni los tres `documentacion.modelo_*`.
    - Antes de cada pregunta, lee entera la ficha de esa clave en `<SOURCES>/config/claves.md`: desde su encabezado `## <clave>` (en mapas libres, con `{nombre}`: `## devops.entornos.{nombre}.<campo>`) hasta la línea anterior al siguiente `## ` o el final del archivo, sin cortarla por número de líneas (`head`, `sed -n`, límites de lectura). Las marcas `<!-- si … -->` y `<!-- fin -->` de dentro son parte de la ficha, no su final. Copia de ella **Cambiarla después** y el párrafo `**Si …:**` de cada opción («Si eliges…», «Si conservas…», «Si declaras…», «Si cambias…»…); no los resumas ni los inventes.
@@ -246,24 +251,44 @@ Si hay varios locks, pregunta cuál vale; el agente podrá quitar el sobrante en
      titula «Si conservas `<valor detectado>`» y copia el cuerpo intacto precedido de «Ejemplo de la
      ficha:». Sin detección, copia el párrafo precedido de «No lo detectamos en tu proyecto; ejemplo
      de la ficha:», dejando claro que su encabezado también pertenece al ejemplo.
-   - Una decisión es un dato, salvo dos agrupaciones permitidas: `rama`/`imagen`/`desplegar` de un entorno,
-     o compartir/separar credencial con IDs de ejemplo (`jenkins-kubeconfig-file` compartida;
-     `kubeconfig-dev` y `kubeconfig-main` separados); los IDs definitivos los da el usuario y van en
-     `devops.entornos.<nombre>.credencial_kubeconfig`. Otros IDs, en respuesta libre.
+   - Una decisión es un dato, salvo tres agrupaciones permitidas: `rama`/`imagen`/`desplegar` de un entorno;
+     compartir/separar credencial; y los recursos y nodePorts de cada entorno que despliega.
+     Para compartir/separar credenciales nuevas puedes ofrecer los IDs de ejemplo de la ficha
+     (`jenkins-kubeconfig-file` compartida; `kubeconfig-dev` y `kubeconfig-main` separados), indicando
+     «créala en Jenkins con exactamente este ID»; la alternativa es escribir otro ID. No hace falta
+     preguntar antes si ya existe una. Para referencias a credenciales existentes pide sus IDs en
+     respuesta libre. Los IDs confirmados van en `devops.entornos.<nombre>.credencial_kubeconfig`.
+   - Por cada entorno que despliega, una sola pregunta sobre réplicas, CPU y memoria (petición y límite)
+     y nodePorts aplicables: «valores detectados» solo con detección inequívoca del paso 3, o «valores de
+     plantilla» solo sin detección, frente a «personalizar». Muestra la lista literal con unidades y origen;
+     incluye el bloque de la ficha de cada clave. Si hay diferencias entre servicios o bloques, resuélvelas
+     primero como se indica abajo. Solo al personalizar pregunta un dato cada vez, conservando la regla de
+     literales numéricos. `cors_origenes` y `clerk_issuer_uri` siguen siendo preguntas propias.
    - No pidas «por texto: 1)… 2)…» ni vuelvas a preguntar lo respondido: di «ya elegiste que `development`
      construye y despliega» y pide solo lo pendiente. Cada pregunta se entiende por sí sola.
-   - Cada opción lleva un ejemplo del proyecto del usuario y explica su efecto. Conserva la recomendación
-     detectada; sin dato previo, identifica la de plantilla. No dupliques esa opción con su literal de ejemplo.
+   - Cada opción explica su efecto. Un ejemplo del proyecto del usuario solo puede presentarse como tal
+     si procede de la detección del paso 3, con archivo y línea. Conserva la recomendación detectada;
+     sin dato previo, distingue el ejemplo de la ficha y el valor de plantilla. No dupliques esa opción
+     con su literal de ejemplo.
      No ofrezcas valores rechazados, como un entorno sin acciones o `documentacion.url_api: null`, `imagen: ninguna` o un segundo `construir`.
    - Si lo ya decidido y los requisitos dejan una sola opción válida, no la preguntes: informa el valor y su causa (por ejemplo, «`main.desplegar` queda en `true` porque `promover` lo exige») y sigue.
    - Si los valores son números (réplicas, puertos), pon en cada opción el literal con su unidad (`1 réplica`, `2 réplicas`) o usa letras; si la respuesta es un número suelto y había opciones, confirma el valor literal antes de registrarlo.
    - El origen es «detectado», «valor por defecto» o «hay que decidirlo». Cita archivo y línea literal de
      lo detectado; informa diferencias entre archivos. Para lo no detectado explica dónde acabará el valor.
      Solo es detectado lo que devuelve el paso 3; un dato de plantilla parecido al del usuario no lo es.
-   - Con herramienta de preguntas, escribe antes la explicación y repite lo esencial en la pregunta,
-     incluida la línea detectada. Las opciones son valores reales, sin huecos como `<ruta>`.
-   - Si solo el usuario puede dar el dato, pide respuesta libre con ejemplo, nunca «escribir ruta».
-     Si llega vacío, dilo y no sigas sin ese dato. No cites conversaciones anteriores ni claves inexistentes.
+   - Con herramienta de preguntas, incluye la línea detectada en el resumen de la pregunta. Las opciones
+     son valores reales, sin huecos como `<ruta>`, con la explicación obligatoria en el mismo mensaje.
+   - Para canal de Slack, etiquetas de nodos, `devops.registry`, URLs, orígenes CORS, issuer y referencias
+     a credenciales existentes, pide respuesta libre con el ejemplo neutro de la ficha, nunca opciones
+     derivadas del nombre del proyecto o de la carpeta ni «escribir ruta». Un dato detectado puede
+     proponerse con su evidencia. Para una credencial nueva de Jenkins puedes ofrecer el ID de ejemplo
+     de la ficha, diciendo «créala en Jenkins con exactamente este ID», o escribir otro ID.
+     Si la respuesta coincide con `proyecto.nombre` o con el nombre de la carpeta en una clave que no es
+     un nombre de proyecto, confirma que ese es el dato real antes de registrarlo. Si falta un dato
+     obligatorio, dilo y espera su respuesta. No cites conversaciones anteriores ni claves inexistentes.
+   - Si una respuesta por «Other» o respuesta libre no elige ninguna de las opciones de la pregunta,
+     aclara cuál aplica antes de registrar el valor. Una ruta no responde si el nodo de Jenkins es esta
+     máquina u otra: pregunta cuál corresponde y conserva la ruta como dato pendiente de atribuir.
    - Con `null`, `ninguna`, `false` o lista vacía permitida, explica **Cambiarla después**; no inventes
      `null` para una clave obligatoria.
    - DevOps (F/H/I/J): presenta **Detectado:** con archivo y línea y propone ese literal.
@@ -502,17 +527,30 @@ No escribas «no existe X» sin un comando mostrado que lo respalde. Ante ausenc
 inesperada, comprueba la ruta exacta con `ls -la <ruta>`, solo dentro de `<PROYECTO>` o `<KIT>`, nunca sobre `account/`, `.env*`, secretos ni kubeconfig; sospecha del aislamiento de la herramienta y pide
 repetir el comando fuera de él antes de pedir que arranque un servicio. No uses la red durante esta guía.
 
-Presenta siempre esta lista en este orden, indicando qué condiciones se cumplen y por qué:
+Explica cómo lanzar los workflows: abre una **sesión nueva** de tu IA en la raíz del proyecto.
+El agente lee `AGENTS.md` al empezar: abre otra sesión después de preparar, fusionar o cambiar de rama.
+Crea antes una rama `feature/*` si trabajas por ramas y pega el prompt del paso correspondiente.
+Las tareas de cambios presentan un plan y esperan tu aprobación antes de escribir; codebase-memory
+conserva su recorrido de indexación, sin plan de cambios propio.
+
+Presenta siempre esta lista en este orden, indicando qué condiciones se cumplen y por qué.
+Entrega los prompts siguientes listos para pegar: sustituye los corchetes por datos reales obtenidos
+en la preparación, sin inventar detecciones ni dejar marcadores en el cierre:
 
 1. El usuario ejecuta `bash .agents/scripts/preparar-proyecto.sh`, revisa y hace commit; la IA no lo ejecuta en esta guía:
    `chore: preparar el proyecto para .agents`. Los workflows requieren Git con árbol limpio: si falta
    repositorio o primer commit, lo prepara el usuario, nunca tú. Explica lo pendiente según `git status --short`.
 2. Si las versiones elegidas difieren del código detectado, ejecutar `.agents/workflows/change-version.md`
    (back, front y SQL según corresponda) antes de los workflows generales; o que el usuario ajuste `stack.yaml`. `change-version` carga su propia documentación: su entrada no bloquea por documentación faltante del catálogo.
+   Prompt: «Sigue `.agents/workflows/change-version.md` para cambiar [tecnologías: versiones detectadas → elegidas]
+   en [servicios o rutas reales]. Presenta el plan y espera mi aprobación antes de escribir».
 3. Si `herramientas.codebase_memory` es `true`, ejecutar `.agents/workflows/codebase-memory.md` para crear el grafo antes de `preparar-documentacion`; sin grafo, el cierre de `preparar-documentacion` bloquea con `GRAFO`.
+   Prompt: «Sigue `.agents/workflows/codebase-memory.md` para crear o actualizar el grafo de este proyecto desde su raíz».
 4. Ejecutar `.agents/workflows/preparar-documentacion.md`: propone URL oficiales, las carga con aprobación
    y comprueba versión y citas; servicios con igual versión comparten documentación. Si avisa de una
    librería fuera de catálogo, usar allí «Ampliar el catálogo del proyecto», nunca editarlo a mano.
+   Prompt: «Sigue `.agents/workflows/preparar-documentacion.md` para preparar documentación de [tecnologías y versiones reales].
+   Muéstrame las fuentes y su revisión y espera mi aprobación antes de cargarlas o asociarlas».
 5. Resto según el caso:
    - Back sin servicios: leer `.agents/skills/service-creator/references/servicio-initializr.md` y dar los
      valores reales obtenidos con `node .agents/scripts/stack.mjs get <clave>`, incluidas las coordenadas
@@ -524,8 +562,16 @@ Presenta siempre esta lista en este orden, indicando qué condiciones se cumplen
      luego lanza ese workflow. No crees el proyecto ni instales nada durante esta guía.
    - Con gestión de usuarios: `.agents/workflows/add-user-management.md` en orden SQL → back → front; Clerk con registro
      restringido por invitación.
-   - Back con `devops.infraestructura: jenkins-kubernetes`: remite al usuario a
-     `<KIT>/manual-usuario.md`, apartado «DevOps y Jenkins»:
+   - Back con `devops.infraestructura: jenkins-kubernetes`: si falta `devops/` o el archivo declarado
+     en `devops.jenkinsfile`, ofrece generar el Jenkinsfile y los manifiestos mediante
+     `.agents/workflows/implement-microservice-feature.md` y `devops-engineer` en modo generar, con plan
+     aprobado para todos los servicios y el gateway y sus entornos. `DEVOPS_ESTADO` informa de lo pendiente;
+     no autoriza escrituras. Nunca restaures `devops/` ni `devops/*/account/` desde el historial de git.
+     Prompt: «Sigue `.agents/workflows/implement-microservice-feature.md` para generar [ruta declarada del Jenkinsfile]
+     y los manifiestos que faltan para [lista real de servicios y gateway] con sus entornos declarados.
+     Usa `devops-engineer` en modo generar, enumera cada artefacto en el plan y espera mi aprobación antes
+     de escribir. Genera desde las plantillas; nunca restaures `devops/` ni `devops/*/account/` desde el historial de git».
+     Remite además al usuario a `<KIT>/manual-usuario.md`, apartado «DevOps y Jenkins»:
      quitar shallow clone, crear
      credenciales con los IDs acordados, merge sin squash/rebase hacia promover e imagen nueva antes del
      primer despliegue de ese entorno. Tú no ejecutas Jenkins.

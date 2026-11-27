@@ -18,7 +18,7 @@
       "tecnologia": "nextjs",
       "tipo": "notas",
       "url": "https://github.com/vercel/next.js/releases/tag/v{version}",
-      "secciones": "Notas de publicación y obsolescencias",
+      "secciones": "Notas de publicación y obsolescencias; si el verificador no atribuye la tecnología y versión principal del parche exacto, queda excluida: revisa la fuente y, si corresponde, cárgala como fuente aportada con --usuario-url --confirmar-correspondencia, tras aprobar su hash. El tag por sí solo no sustituye la validación",
       "estado": "por verificar"
     },
     {
@@ -34,7 +34,7 @@
       "tecnologia": "react",
       "tipo": "notas",
       "url": "https://github.com/facebook/react/releases/tag/v{version}",
-      "secciones": "Notas exactas de React",
+      "secciones": "Notas exactas de React; si el verificador no atribuye la tecnología y versión principal del parche exacto, queda excluida: revisa la fuente y, si corresponde, cárgala como fuente aportada con --usuario-url --confirmar-correspondencia, tras aprobar su hash. El tag por sí solo no sustituye la validación",
       "estado": "por verificar"
     },
     {
@@ -58,7 +58,7 @@
       "tecnologia": "typescript",
       "tipo": "notas",
       "url": "https://github.com/microsoft/TypeScript/releases/tag/v{version}",
-      "secciones": "Notas exactas de TypeScript",
+      "secciones": "Notas exactas de TypeScript; si el verificador no atribuye la tecnología y versión principal del parche exacto, queda excluida: revisa la fuente y, si corresponde, cárgala como fuente aportada con --usuario-url --confirmar-correspondencia, tras aprobar su hash. El tag por sí solo no sustituye la validación",
       "estado": "por verificar"
     },
     {

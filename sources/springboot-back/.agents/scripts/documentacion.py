@@ -751,6 +751,7 @@ def es_oficial(catalog, tech, url):
 ALIAS_TECNOLOGIA = {
     'jdk': ['Java', 'Java SE', 'OpenJDK', 'Java Platform, Standard Edition', 'Oracle JDK'],
     'lombok': ['Project Lombok'],
+    'spring-cloud-kubernetes': ['DiscoveryClient for Kubernetes'],
     'spring-cloud-gateway': [
         'Spring Cloud Gateway Server WebFlux',
         'Spring Cloud Gateway Server Web MVC',
@@ -783,6 +784,31 @@ def tecnologia_compatible(name, meta, catalog):
     base = _quitar_sufijo_version(name).strip() or name
     allowed = {normalize(nombre) for nombre in nombres_tecnologia(meta, catalog)}
     return normalize(base) in allowed
+
+
+def nombre_de_otra_tecnologia(name, meta, catalog):
+    base = _quitar_sufijo_version(name).strip()
+    normalize = lambda value: re.sub(r'[^a-z0-9]', '', value.casefold())
+    words = re.findall(r'[a-z0-9]+', base.casefold())
+    for tech in catalog['tecnologias']:
+        if tech == meta['tecnologia']:
+            continue
+        for label in nombres_tecnologia({'tecnologia': tech}, catalog):
+            if normalize(base) == normalize(label):
+                return True
+            parts = re.findall(r'[a-z0-9]+', _quitar_sufijo_version(label).casefold())
+            if parts and any(words[i:i + len(parts)] == parts for i in range(len(words) - len(parts) + 1)):
+                return True
+    return False
+
+
+def entradas_registradas(data):
+    """Incluye el historial, cuya versión se conserva explícitamente."""
+    for tech, group in data['tecnologias'].items():
+        for expected, entry in group['versiones'].items():
+            yield tech, expected, entry
+        for entry in group.get('retirados', []):
+            yield tech, entry['version'], entry
 
 
 def principal_compatible(principal, meta, catalog, kind):
@@ -1224,11 +1250,10 @@ class Registro:
                 return {'formato': 1, 'tecnologias': {}, 'servicios': {}}
             value = json.loads(raw.decode('utf-8'))
             self.validate(value)
-            for group in value['tecnologias'].values():
-                for entry in group['versiones'].values():
-                    for source in entry['fuentes']:
-                        source.setdefault('origen', 'catalogo')
-                        source.setdefault('oficial', True)
+            for _, _, entry in entradas_registradas(value):
+                for source in entry['fuentes']:
+                    source.setdefault('origen', 'catalogo')
+                    source.setdefault('oficial', True)
             self._huella, self._leido = huella_bytes(raw), True
             return value
         except (OSError, ValueError, KeyError, TypeError, AttributeError) as error:
@@ -1239,13 +1264,21 @@ class Registro:
             raise ValueError()
         if not isinstance(data.get('tecnologias'), dict) or not isinstance(data.get('servicios'), dict):
             raise ValueError()
+        notebooks = set()
         for tech, group in data['tecnologias'].items():
-            if not isinstance(tech, str) or not isinstance(group.get('versiones'), dict):
+            if not isinstance(tech, str) or not isinstance(group, dict) or not isinstance(group.get('versiones'), dict):
                 raise ValueError()
-            for expected, entry in group['versiones'].items():
+            retired = group.get('retirados', [])
+            if not isinstance(retired, list) or any(not isinstance(e, dict) or e.get('estado') != 'retirado' or not isinstance(e.get('version'), str) for e in retired):
+                raise ValueError()
+            entries = list(group['versiones'].items()) + [(e['version'], e) for e in retired]
+            for expected, entry in entries:
                 version(expected, tech == 'jdk')
-                if not isinstance(entry.get('notebook'), str) or not entry['notebook'].startswith('notebook:') or entry.get('estado') not in ('activo', 'archivado') or not isinstance(entry.get('fuentes'), list):
+                if not isinstance(entry.get('notebook'), str) or not entry['notebook'].startswith('notebook:') or entry.get('estado') not in ('activo', 'archivado', 'retirado') or not isinstance(entry.get('fuentes'), list):
                     raise ValueError()
+                if entry['notebook'] in notebooks:
+                    raise ValueError()
+                notebooks.add(entry['notebook'])
                 seen = set()
                 for source in entry['fuentes']:
                     if not isinstance(source.get('id'), str) or not source['id'].startswith('source:') or source['id'] in seen:
@@ -1262,6 +1295,8 @@ class Registro:
                         url = urllib.parse.urlsplit(source['url'])
                         if url.scheme != 'https' or not url.hostname or url.username or url.password:
                             raise ValueError()
+                    if type(source.get('retirada', False)) is not bool or (source.get('retirada') and source.get('valida')):
+                        raise ValueError()
                     if type(source.get('valida')) is not bool or source.get('tipo') not in SOURCE_TYPES:
                         raise ValueError()
                     if source['valida'] and (not re.fullmatch(r'[a-f0-9]{64}', str(source.get('sha256', ''))) or not fuente_compatible(tech, expected, source)):
@@ -1334,6 +1369,9 @@ class Registro:
                     errors.append('DOCUMENTACION_FALTA: ' + prefix + ' no tiene documentación asociada; ' + prepare)
                     continue
                 entry = data['tecnologias'][tech]['versiones'][binding['version_documentacion']]
+                if entry['estado'] == 'retirado':
+                    errors.append('DOCUMENTACION_FALTA: ' + prefix + ' está retirada; prepara y carga de nuevo; ' + prepare)
+                    continue
                 if entry['estado'] == 'archivado':
                     errors.append('DOCUMENTACION_FALTA: ' + prefix + ' está archivada; reactívala con aprobación; ' + prepare)
                     continue
@@ -1372,7 +1410,9 @@ class Registro:
                     status = 'no_resoluble'
                 elif entry:
                     status = entry['estado']
-                    if any(not fuente_compatible(tech, project['version'], s) for s in entry['fuentes'] if s['valida']):
+                    if entry['estado'] == 'retirado':
+                        status = 'retirado; prepara y carga de nuevo'
+                    elif any(not fuente_compatible(tech, project['version'], s) for s in entry['fuentes'] if s['valida']):
                         status = 'incompatible'
                     elif entry['estado'] == 'activo':
                         status = 'compatible' if any(s['valida'] for s in entry['fuentes']) else 'sin fuentes válidas'
@@ -1381,15 +1421,16 @@ class Registro:
         for tech, group in sorted(data['tecnologias'].items()):
             for expected, entry in sorted(group['versiones'].items()):
                 lines.append('| ' + ' | '.join(map(clean, [tech, expected, entry['notebook'], entry['estado']])) + ' |')
+            for entry in group.get('retirados', []):
+                lines.append('| ' + ' | '.join(map(clean, [tech, entry['version'], entry['notebook'], 'retirado (historial)'])) + ' |')
         return '\n'.join(lines) + '\n'
 
     def preparar_guardado(self, data, actualizado_en=None):
         data['formato'] = 2
-        for group in data['tecnologias'].values():
-            for entry in group['versiones'].values():
-                for source in entry['fuentes']:
-                    source.setdefault('origen', 'catalogo')
-                    source.setdefault('oficial', True)
+        for _, _, entry in entradas_registradas(data):
+            for source in entry['fuentes']:
+                source.setdefault('origen', 'catalogo')
+                source.setdefault('oficial', True)
         self.validate(data)
         data['actualizado_en'] = actualizado_en or datetime.now(timezone.utc).isoformat()
         payload = json.dumps(data, ensure_ascii=False, indent=2) + '\n'
@@ -1425,11 +1466,22 @@ class Registro:
         except (OSError, ValueError, KeyError, TypeError, AttributeError) as error:
             block('REGISTRO', causa_os('No se pudo guardar documentacion.json y su Markdown; revisa el registro sin sobrescribirlo a mano.', error))
 
+    def comprobar_notebook_no_retirado(self, data, notebook):
+        if any(e['notebook'] == notebook and e['estado'] == 'retirado' for _, _, e in entradas_registradas(data)):
+            block('REGISTRO', 'Ese ID de notebook está retirado; prepara y carga de nuevo en otro notebook.')
+
     def book(self, data, tech, expected, notebook, state='activo'):
+        self.comprobar_notebook_no_retirado(data, notebook)
         group = data['tecnologias'].setdefault(tech, {'versiones': {}})
-        entry = group['versiones'].setdefault(expected, {'notebook': notebook, 'estado': state, 'fuentes': []})
-        if entry['notebook'] != notebook:
-            block('REGISTRO', 'Ya hay otro notebook registrado para esa tecnología y versión; revisa antes de sustituirlo.')
+        entry = group['versiones'].get(expected)
+        if entry and entry['notebook'] != notebook:
+            if entry['estado'] != 'retirado':
+                block('REGISTRO', 'Ya hay otro notebook registrado para esa tecnología y versión; revisa antes de sustituirlo.')
+            group.setdefault('retirados', []).append(dict(entry, version=expected))
+            entry = None
+        if entry is None:
+            entry = {'notebook': notebook, 'estado': state, 'fuentes': []}
+            group['versiones'][expected] = entry
         entry['estado'] = state
         return entry
 
@@ -1473,6 +1525,8 @@ class Registro:
             project = usages[service][tech]
             if not without:
                 entry = data['tecnologias'].get(tech, {}).get('versiones', {}).get(expected)
+                if entry and entry['estado'] == 'retirado':
+                    block('DOCUMENTACION_FALTA', 'El notebook está retirado; prepara y carga de nuevo.')
                 if not entry or entry['estado'] != 'activo' or not any(s['valida'] for s in entry['fuentes']):
                     block('DOCUMENTACION', 'Prepara documentación válida de esa versión antes de asociarla.')
                 if project['estado'] != 'literal' or any(not fuente_compatible(tech, project['version'], s) for s in entry['fuentes'] if s['valida']):
@@ -1508,6 +1562,8 @@ class Registro:
         project = usages[service][tech]
         if supplied is not None and supplied != expected:
             block('VERSION', 'La versión indicada no coincide con la documentación asociada al servicio.')
+        if entry['estado'] == 'retirado':
+            block('DOCUMENTACION_FALTA', 'El notebook está retirado; prepara y carga de nuevo.')
         if entry['estado'] != 'activo' or not any(s['valida'] for s in entry['fuentes']):
             block('DOCUMENTACION', 'La documentación asociada no está activa o carece de fuentes válidas.')
         if project['estado'] != 'literal' or any(not fuente_compatible(tech, project['version'], s) for s in entry['fuentes'] if s['valida']):
@@ -1669,6 +1725,78 @@ class Client:
             block('API_FORMATO', 'No recibiste los metadatos del ID solicitado; revisa la compatibilidad de la API.')
         return value
 
+    def notebook_remoto(self, identifier):
+        value = self.remote_item('/api/notebooks/', identifier)
+        if value is None:
+            block('NOTEBOOK_AUSENTE', 'El notebook ya no existe; usa documentacion.py retirar-ausentes, después preparar y cargar.')
+        return value
+
+    def fuente_remota(self, identifier):
+        value = self.remote_item('/api/sources/', identifier)
+        if value is None:
+            self.fuente_ausente()
+        return value
+
+    def fuente_ausente(self):
+        block('FUENTE_AUSENTE', 'La fuente ya no está disponible; revisa documentacion.py retirar-ausentes (vista previa y --confirmar), después prepara/carga de nuevo y asocia.')
+
+    def ausencias_registradas(self, data, notebook=None):
+        entries = [e for _, _, e in entradas_registradas(data) if notebook is None or e['notebook'] == notebook]
+        if notebook is not None and not entries:
+            block('REGISTRO', 'El notebook indicado no está registrado.')
+        books, sources = {}, {}
+        for entry in entries:
+            identifier = entry['notebook']
+            if identifier not in books:
+                books[identifier] = self.remote_item('/api/notebooks/', identifier)
+            for source in entry['fuentes']:
+                identifier = source['id']
+                if identifier not in sources:
+                    sources[identifier] = self.remote_item('/api/sources/', identifier)
+        return {'notebooks': sorted(k for k, v in books.items() if v is None),
+                'fuentes': sorted(k for k, v in sources.items() if v is None)}
+
+    def listar_ausentes(self):
+        return {'ausentes': self.ausencias_registradas(self.registro.read())}
+
+    def retirar_ausentes(self, notebook=None, confirmed=False):
+        with bloqueo_agents(self.root):
+            data = self.registro.read()
+            absent = self.ausencias_registradas(data, notebook)
+            changed = False
+            affected = set()
+            for tech, expected, entry in entradas_registradas(data):
+                if notebook is not None and entry['notebook'] != notebook:
+                    continue
+                if entry['notebook'] in absent['notebooks']:
+                    if entry['estado'] != 'retirado':
+                        entry['estado'] = 'retirado'
+                        changed = True
+                    affected.add((tech, expected, entry['notebook']))
+                else:
+                    for source in entry['fuentes']:
+                        if source['id'] in absent['fuentes']:
+                            updates = {'valida': False, 'motivo': 'FUENTE_AUSENTE', 'retirada': True}
+                            if any(source.get(k) != v for k, v in updates.items()):
+                                source.update(updates)
+                                changed = True
+                    if any(s['id'] in absent['fuentes'] for s in entry['fuentes']) and not any(s['valida'] for s in entry['fuentes']):
+                        affected.add((tech, expected, entry['notebook']))
+            for service in data['servicios'].values():
+                for tech, binding in service['tecnologias'].items():
+                    expected = binding.get('version_documentacion')
+                    current = data['tecnologias'].get(tech, {}).get('versiones', {}).get(expected)
+                    if current and (tech, expected, current['notebook']) in affected and binding['estado'] == 'asociado':
+                        binding.update(estado='pendiente', version_documentacion=None)
+                        changed = True
+            preview = {'diff': '', 'diff_documentacion_md': ''}
+            if changed:
+                if confirmed:
+                    self.registro.save(data)
+                else:
+                    preview = self.registro.diff_registro(data)
+            return {'confirmado': confirmed, 'ausentes': absent, 'cambios': changed, **preview}
+
     def defaults(self):
         return self.request('GET', '/api/models/defaults')
 
@@ -1749,7 +1877,7 @@ class Client:
 
     def notebook(self, identifier):
         # Solo se obtiene el notebook solicitado, nunca el contenido de otros notebooks.
-        nb = self.request('GET', '/api/notebooks/' + urllib.parse.quote(identifier, safe=''))
+        nb = self.notebook_remoto(identifier)
         try:
             meta = json.loads(nb['description'])
         except (ValueError, KeyError, TypeError):
@@ -1770,7 +1898,8 @@ class Client:
         if len(candidates) > 1:
             block('DUPLICADO', 'Hay varios notebooks con ese nombre; decide cuál usar.')
         if candidates:
-            nb = self.request('GET', '/api/notebooks/' + urllib.parse.quote(candidates[0]['id'], safe=''))
+            self.registro.comprobar_notebook_no_retirado(self.registro.read(), candidates[0]['id'])
+            nb = self.notebook_remoto(candidates[0]['id'])
             try:
                 existing = json.loads(nb['description'])
             except (KeyError, ValueError, TypeError):
@@ -1833,7 +1962,7 @@ class Client:
     def poll_source(self, source_id):
         deadline = time.monotonic() + JOB_TIMEOUT
         while time.monotonic() < deadline:
-            source = self.request('GET', '/api/sources/' + urllib.parse.quote(source_id, safe=''))
+            source = self.fuente_remota(source_id)
             status = source.get('status', source.get('processing_status'))
             if status in ('failed', 'error'):
                 block('CARGA', 'La fuente falló durante su procesamiento.')
@@ -1908,7 +2037,7 @@ class Client:
                 official = es_oficial(self.catalog, meta['tecnologia'], url)
                 evidence.update(origen='usuario-url', url=url, contenido_sha256=hashlib.sha256(raw).hexdigest())
             check = comprobar_correspondencia(text, meta, self.catalog, tipo, correspondencia)
-            evidence.update(oficial=official, mime=mime, tamano=len(raw), confirmada_usuario=check['confirmada_usuario'],
+            evidence.update(oficial=official, mime=mime, tamano=len(raw), confirmada_usuario=bool(usuario_url and correspondencia) or check['confirmada_usuario'],
                             evidencia_previa=check, aprobacion_sha256=hashlib.sha256(raw).hexdigest())
             if procedencia:
                 evidence['procedencia_url'] = procedencia
@@ -1936,9 +2065,14 @@ class Client:
             else:
                 self.check_url(url, entry, meta)
             evidence.update(origen='catalogo', oficial=es_oficial(self.catalog, meta['tecnologia'], url), entrada=entry_id, url=url)
+        with bloqueo_agents(self.root):
+            local_data = self.registro.read()
+            self.registro.book(copy.deepcopy(local_data), meta['tecnologia'], meta['version'], identifier)
+        retired_sources = {source['id'] for _, _, e in entradas_registradas(local_data)
+                           for source in e['fuentes'] if source.get('retirada')}
         # Deduplicar archivos por bytes, las URL por dirección y por membresía remota real.
-        records = self.records(identifier, 'fuente')
-        members = self.notebook_sources(identifier)
+        records = [r for r in self.records(identifier, 'fuente') if r.get('fuente') not in retired_sources]
+        members = [m for m in self.notebook_sources(identifier) if m['id'] not in retired_sources]
         if archivo:
             existing = [r for r in records if r.get('archivo_sha256') == evidence['archivo_sha256']]
             existing_sources = [item for item in members if any(r.get('fuente') == item['id'] for r in existing)]
@@ -1957,7 +2091,18 @@ class Client:
             valid = bool(record and record.get('valida') and record.get('version') == meta['version'])
             reason = record.get('motivo', 'registro sin validación') if record else 'Fuente existente sin registro validado; no se vuelve a cargar'
             if valid or user_source:
-                source = self.request('GET', '/api/sources/' + urllib.parse.quote(source_id, safe=''))
+                source = self.fuente_remota(source_id)
+            if usuario_url and correspondencia:
+                self.comprobar_url_final(source, url)
+                escanear_contenido(self.text(source))
+                if normalizar_cita(text) != normalizar_cita(self.text(source)):
+                    block('FUENTE_TEXTO', 'El texto guardado difiere de la fuente revisada; revisa retirar-ausentes si falta el objeto. Si existe, aporta otra URL o archivo público revisado; no lo borres a mano.')
+                transformation_id, embed = self.preparar_validacion_carga(identifier, meta)
+                record = dict(evidence, administrado_por=OWNER, fuente=source_id,
+                              tipo=entry['tipo'], version=meta['version'], valida=False)
+                result = self.finalizar_carga(identifier, meta, entry, record, transformation_id,
+                                             url, embed, negative, True, True, text, revalidar=True)
+                return dict(result, reutilizada=True)
             if valid:
                 valid = digest(self.text(source)) == record.get('sha256')
                 if not valid:
@@ -1985,7 +2130,7 @@ class Client:
             self.registro.source(meta, identifier, local_record, source)
             return {'fuente': source_id, 'valida': valid, 'reutilizada': True, 'motivo': reason}
         if existing:
-            block('FUENTE_AUSENTE', 'El registro apunta a una fuente que no está en el notebook; revisa el registro antes de cargar.')
+            self.fuente_ausente()
         transformation_id, embed = self.preparar_validacion_carga(identifier, meta)
         if archivo:
             multipart = multipart_upload({'type': 'upload', 'notebooks': json.dumps([identifier]), 'embed': str(embed).lower(), 'transformations': '[]', 'delete_source': 'false', 'async_processing': 'false'}, raw, name, mime)
@@ -2069,7 +2214,7 @@ class Client:
         deadline = time.monotonic() + EMBEDDING_WAIT_TIMEOUT
         source = None
         while source is None or time.monotonic() < deadline:
-            source = self.request('GET', '/api/sources/' + urllib.parse.quote(source_id, safe=''))
+            source = self.fuente_remota(source_id)
             chunks = source.get('embedded_chunks', 0)
             if source.get('embedded') is True and isinstance(chunks, int) and not isinstance(chunks, bool) and chunks > 0:
                 return source
@@ -2113,6 +2258,11 @@ class Client:
                 raise ValueError()
             name_compatible = tecnologia_compatible(principal['tecnologia'], meta, self.catalog)
             compatible = principal_compatible(principal, meta, self.catalog, entry['tipo'])
+            if not name_compatible and principal['tecnologia'].strip() and record.get('origen') == 'usuario-url' and record.get('confirmada_usuario') and not negative:
+                version(detected, meta['tecnologia'] == 'jdk')
+                if not nombre_de_otra_tecnologia(principal['tecnologia'], meta, self.catalog):
+                    name_compatible = True
+                    compatible = fuente_compatible(meta['tecnologia'], meta['version'], {'tipo': entry['tipo'], 'version_principal': detected})
             if not compatible:
                 try:
                     version(detected, meta['tecnologia'] == 'jdk')
@@ -2133,6 +2283,8 @@ class Client:
         if detected is None and record.get('confirmada_usuario') and not negative and (not isinstance(principal, dict) or not principal.get('tecnologia') or tecnologia_compatible(principal['tecnologia'], meta, self.catalog)):
             principal = {'tecnologia': meta['tecnologia'], 'version': meta['version']}
             valid, reason = True, 'correspondencia_confirmada_usuario; versión no atribuida al texto'
+        if not valid and record.get('entrada') == 'B10':
+            reason += '; revisa la fuente y, si corresponde al tren solicitado, usa --usuario-url --confirmar-correspondencia con su hash aprobado'
         record.update(valida=valid, principal=principal, referenciadas=references,
                       detectadas=[detected] if detected else [], sha256=digest(self.text(source)), resumen=insight, motivo=reason)
 
@@ -2355,17 +2507,21 @@ class Client:
         return answer
 
     def _meta_notebook_administrado(self, identifier):
-        nb = self.request('GET', '/api/notebooks/' + urllib.parse.quote(identifier, safe=''))
+        nb = self.notebook_remoto(identifier)
         try:
             meta = json.loads(nb['description'])
         except (KeyError, TypeError, ValueError):
             block('PROPIEDAD', 'El notebook no pertenece a la documentación administrada.')
         if meta.get('administrado_por') != OWNER:
             block('PROPIEDAD', 'No se archivan notebooks ajenos.')
+        self.registro.comprobar_notebook_no_retirado(self.registro.read(), identifier)
         return nb, meta
 
     def servicios_que_usan_notebook(self, data, meta):
         current = self.registro.usages(data)
+        entry = data['tecnologias'].get(meta['tecnologia'], {}).get('versiones', {}).get(meta['version'])
+        if entry and entry['estado'] == 'retirado':
+            return []
         usados = []
         for name, service in data['servicios'].items():
             binding = service['tecnologias'].get(meta['tecnologia'], {})
@@ -2407,7 +2563,11 @@ def main():
     parser = Parser(description=__doc__)
     commands = parser.add_subparsers(dest='command', required=True)
     commands.add_parser('comprobar-conexion')
-    commands.add_parser('comprobar-existencia')
+    existence = commands.add_parser('comprobar-existencia')
+    existence.add_argument('--listar-ausentes', action='store_true')
+    retire = commands.add_parser('retirar-ausentes')
+    retire.add_argument('--notebook')
+    retire.add_argument('--confirmar', action='store_true')
     state = commands.add_parser('estado')
     selection = state.add_mutually_exclusive_group()
     selection.add_argument('--notebook')
@@ -2466,7 +2626,7 @@ def main():
         args = parser.parse_args()
         root = Path(__file__).resolve().parents[1]
         if getattr(args, 'confirmar', False) and (
-                args.command in ('cargar', 'asociar', 'archivar', 'resolver-bom', 'ampliar-catalogo')
+                args.command in ('cargar', 'asociar', 'archivar', 'resolver-bom', 'ampliar-catalogo', 'retirar-ausentes')
                 or (args.command == 'preparar' and args.reactivar)):
             comprobar_escritura_registro(root)
         if args.command == 'resolver-bom':
@@ -2481,7 +2641,9 @@ def main():
         if args.command == 'comprobar-conexion':
             result = client.connection()
         elif args.command == 'comprobar-existencia':
-            result = client.remote_documentation()
+            result = client.listar_ausentes() if args.listar_ausentes else client.remote_documentation()
+        elif args.command == 'retirar-ausentes':
+            result = client.retirar_ausentes(args.notebook, args.confirmar)
         elif args.command == 'estado':
             result = client.state(args.notebook, args.prefijo)
         elif args.command == 'preparar':

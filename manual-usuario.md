@@ -245,6 +245,11 @@ Elige construir o promover según lo que deba hacer, o elimina esa entrada.
 
 ## 2. Trabajar con los workflows
 
+Abre una **sesión nueva** de tu IA en la raíz del proyecto: el agente lee `AGENTS.md` al empezar.
+Abre otra sesión después de preparar, fusionar o cambiar de rama. Si trabajas por ramas, crea antes
+una rama `feature/*`; pega el prompt de la tarea o escribe tu petición con la ruta del workflow.
+Las tareas de cambios presentan un plan y esperan tu aprobación antes de escribir.
+
 Pide a la IA una tarea concreta y cita su workflow si ya sabes cuál necesitas. Por ejemplo:
 «Sigue `.agents/workflows/implement-feature.md` para añadir la pantalla de pedidos».
 Cuando la IA propone una tarea para resolver un aviso, tú decides si la lanzas.
@@ -650,6 +655,12 @@ esos trabajos necesitan su tarea y aprobación.
 
 ### Activar DevOps o cambiar sus valores
 
+Con `jenkins-kubernetes`, si falta `devops/` o el archivo declarado por `devops.jenkinsfile`, pide
+`.agents/workflows/implement-microservice-feature.md` para generar el Jenkinsfile y los manifiestos
+de todos los servicios y el gateway, con sus entornos. La IA usa `devops-engineer` en modo generar y
+espera tu aprobación del plan y su lista de archivos. No restaures `devops/` ni `devops/*/account/` del
+historial de git: podrías reintroducir secretos versionados.
+
 Si empezaste sin infraestructura, cambia `devops.infraestructura` a `jenkins-kubernetes`, completa
 las claves que pida el generador y regenera. Después pide implement-microservice-feature para los
 artefactos, o acepta esa parte del plan cuando una tarea de escritura te la ofrezca.
@@ -682,6 +693,12 @@ Elige el tema de tu stack. Aquí están los detalles de operación; los workflow
 ### Back: servicios y DevOps
 
 #### DevOps y Jenkins
+
+Con `jenkins-kubernetes`, si falta `devops/` o el archivo declarado por `devops.jenkinsfile`, pide
+`.agents/workflows/implement-microservice-feature.md` para generar el Jenkinsfile y los manifiestos
+de todos los servicios y el gateway, con sus entornos. La IA usa `devops-engineer` en modo generar y
+espera tu aprobación del plan y su lista de archivos. No restaures `devops/` ni `devops/*/account/` del
+historial de git: podrías reintroducir secretos versionados.
 
 Configura tú el job, las máquinas, credenciales y registry; la IA prepara/valida artefactos aprobados,
 sin ejecutar Jenkins, Docker ni kubectl. Haz coincidir Script Path con `devops.jenkinsfile`, por ejemplo
@@ -1029,6 +1046,26 @@ modelo; solo las citas verificadas entran al plan y lo no comprobable se muestra
 | `MODELO_TIMEOUT` | Espera del modelo; no se reintenta automáticamente. |
 
 Para acceso y espera, consulta [Conexión, permisos y SonarQube](#conexión-permisos-y-sonarqube); la API sin contraseña se avisa para que tú decidas su protección.
+
+##### Recuperar documentación borrada en Open Notebook
+
+No borres notebooks o fuentes a mano; si ya lo hiciste, usa `retirar-ausentes` dentro de
+`preparar-documentacion` (o de `change-version` cuando resuelve su documentación):
+
+1. Ejecuta `python3 -I -B .agents/scripts/documentacion.py comprobar-existencia --listar-ausentes`.
+   Lista los IDs con HTTP 404 aunque falte cobertura local; otros errores bloquean sin dar bajas.
+2. Revisa `python3 -I -B .agents/scripts/documentacion.py retirar-ausentes` sin `--confirmar`:
+   muestra el diff de `documentacion.json` y `.md` sin escribirlos. Puedes limitarlo con `--notebook ID`.
+3. Tras aprobar el diff, repite con `--confirmar` (y el mismo filtro, si lo usaste). Vuelve a consultar
+   el estado remoto actual; solo cambia el registro local, nunca borra nada en Open Notebook.
+4. Repite `preparar`, `cargar` y `asociar`, con sus aprobaciones, y el cotejo estricto
+   `python3 -I -B .agents/scripts/comprobar-documentacion.py`. Un notebook retirado necesita otro ID;
+   las fuentes retiradas conservan su historial y permiten recargar la misma URL.
+
+No edites los registros a mano. Si una fuente reutilizada tiene texto distinto al que revisaste,
+`FUENTE_TEXTO` bloquea su reevaluación: revisa las ausencias y, si sigue existiendo, aporta otra URL
+pública o archivo revisado. `retirar-ausentes` solo retira objetos con 404, no objetos existentes.
+La comprobación de existencia sin `--listar-ausentes` mantiene el cotejo estricto del preflight.
 
 #### Cambiar versiones
 
