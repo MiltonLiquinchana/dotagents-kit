@@ -21,7 +21,7 @@
       "tecnologia": "spring-boot",
       "tipo": "notas",
       "url": "https://github.com/spring-projects/spring-boot/releases/tag/v{version}",
-      "secciones": "Notas del parche exacto; si el verificador no atribuye la tecnología y versión principal del parche exacto, queda excluida: revisa la fuente y, si corresponde, cárgala como fuente aportada con --usuario-url --confirmar-correspondencia, tras aprobar su hash. El tag por sí solo no sustituye la validación",
+      "secciones": "Notas del parche exacto; el verificador acepta el tag con prefijo v/V y valida la tecnología y la versión principal del parche exacto. Si una fuente quedó inválida por ese prefijo antes de esta corrección, usa cargar NOTEBOOK URL --entrada B3 --revalidar --confirmar tras la aprobación. Si el verificador sigue sin atribuir la tecnología y la versión principal del parche exacto por otro motivo, queda excluida: revisa la fuente y, si corresponde, cárgala como fuente aportada con --usuario-url --confirmar-correspondencia, tras aprobar su hash. El tag por sí solo no sustituye la validación",
       "estado": "por verificar"
     },
     {
@@ -69,7 +69,7 @@
       "tecnologia": "lombok",
       "tipo": "notas",
       "url": "https://github.com/projectlombok/lombok/releases/tag/v{version}",
-      "secciones": "Compatibilidad y cambios de Lombok; si el verificador no atribuye la tecnología y versión principal del parche exacto, queda excluida: revisa la fuente y, si corresponde, cárgala como fuente aportada con --usuario-url --confirmar-correspondencia, tras aprobar su hash. El tag por sí solo no sustituye la validación",
+      "secciones": "Compatibilidad y cambios de Lombok; el verificador acepta el tag con prefijo v/V y valida la tecnología y la versión principal del parche exacto. Si una fuente quedó inválida por ese prefijo antes de esta corrección, usa cargar NOTEBOOK URL --entrada B9 --revalidar --confirmar tras la aprobación. Si el verificador sigue sin atribuir la tecnología y la versión principal del parche exacto por otro motivo, queda excluida: revisa la fuente y, si corresponde, cárgala como fuente aportada con --usuario-url --confirmar-correspondencia, tras aprobar su hash. El tag por sí solo no sustituye la validación",
       "estado": "por verificar"
     },
     {

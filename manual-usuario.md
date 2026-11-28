@@ -198,6 +198,7 @@ Sigue este orden:
    en `change-version` (grupo V) avisa en ambas fases; en `preparar-documentacion` (grupo D) avisa
    en la entrada y bloquea al cerrar.
 4. Pide `.agents/workflows/preparar-documentacion.md` para completar la documentación del proyecto.
+   Tras change-version, reutiliza lo ya cargado y realiza el cotejo global y el preflight de cierre con las versiones que tenga ahora el código.
    Hazlo antes que los demás workflows, salvo `codebase-memory`: si falta documentación, los otros se detienen y te proponen
    lanzarlo; no cargan fuentes por su cuenta. Solo `preparar-documentacion` (y change-version, para sus
    versiones) carga fuentes, y cada carga necesita que apruebes esa fuente y su hash.

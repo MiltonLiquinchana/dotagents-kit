@@ -225,11 +225,21 @@ El issuer de Clerk no se busca. Registra los comandos fallidos o sin salida para
 
 ## Paso 4 — Preguntar
 
-**No hay pregunta sin explicación.** El mensaje que contiene la pregunta lleva, para cada clave que
-pregunta, el bloque de su ficha: qué significa, dónde se ve, para qué se usa, qué pasa si está mal,
-opciones con su párrafo `**Si …:**` y cómo cambiarla después. También se aplica a preguntas agrupadas
-(el bloque de cada clave) y seguidas. La propia pregunta resume en una línea **para qué se usa** y cada
-opción dice su consecuencia. En una confirmación basta repetir para qué se usa y la consecuencia.
+**No hay pregunta sin explicación.** Esta regla se aplica a las preguntas sobre claves del paso 4,
+sin excepciones salvo la confirmación abreviada descrita al final. También se aplica a la primera
+pregunta de una clave, a claves con detección inequívoca, a booleanas y a preguntas de respuesta libre
+(etiquetas, rutas, IDs). Reproduce el bloque de cada clave con las etiquetas literales de sus
+encabezados en negrita en `<SOURCES>/config/claves.md`: **En resumen:**, **Dónde se ve en tu proyecto:**,
+**Para qué se usa:**, **Qué pasa si está mal:**, **Cambiarla después:** y los párrafos **Si …:** de sus
+opciones. Conserva las etiquetas que tenga la ficha; no las sustituyas por prosa sin rótulos. El bloque
+va en el mismo mensaje que la pregunta. También se aplica a preguntas agrupadas (el bloque de cada
+clave) y seguidas. Con herramienta de preguntas, escribe esos bloques justo antes de la llamada en
+ese mismo turno. Antes de cada pregunta comprueba que ese texto contiene el bloque de cada clave que
+preguntas, con sus etiquetas; si falta alguno, escríbelo primero. Una línea dentro de la pregunta no
+sustituye el bloque. La propia pregunta resume en una línea **para qué se usa** y cada opción dice su
+consecuencia. No se exige bloque de ficha al glosario ni a preguntas que no son claves, como la
+selección del notebook en SQL. Las preguntas anteriores al paso 4 (punto de partida y stack) no
+cambian. En una confirmación basta repetir para qué se usa y la consecuencia.
 
 Muestra una vez el glosario «Palabras que usan estas fichas» de `<SOURCES>/config/claves.md` antes de la primera pregunta.
 En SQL, lista primero los nombres de notebooks y pregunta cuál contiene datos de prueba: ese y sus alias
@@ -281,11 +291,16 @@ Si hay varios locks, pregunta cuál vale; el agente podrá quitar el sobrante en
    - Para canal de Slack, etiquetas de nodos, `devops.registry`, URLs, orígenes CORS, issuer y referencias
      a credenciales existentes, pide respuesta libre con el ejemplo neutro de la ficha, nunca opciones
      derivadas del nombre del proyecto o de la carpeta ni «escribir ruta». Un dato detectado puede
-     proponerse con su evidencia. Para una credencial nueva de Jenkins puedes ofrecer el ID de ejemplo
+     proponerse con su evidencia.
+     Excepción explícita: para `devops.entornos.<e>.cors_origenes` y
+     `devops.entornos.<e>.clerk_issuer_uri` del back, también puedes ofrecer reutilizar una respuesta
+     equivalente ya confirmada en esta preparación, con los valores citados y las condiciones del bloque
+     por entorno de abajo. Mantén siempre la alternativa de respuesta libre.
+     Para una credencial nueva de Jenkins puedes ofrecer el ID de ejemplo
      de la ficha, diciendo «créala en Jenkins con exactamente este ID», o escribir otro ID.
      Si la respuesta coincide con `proyecto.nombre` o con el nombre de la carpeta en una clave que no es
      un nombre de proyecto, confirma que ese es el dato real antes de registrarlo. Si falta un dato
-     obligatorio, dilo y espera su respuesta. No cites conversaciones anteriores ni claves inexistentes.
+     obligatorio, dilo y espera su respuesta. No cites conversaciones anteriores a esta preparación ni claves inexistentes.
    - Si una respuesta por «Other» o respuesta libre no elige ninguna de las opciones de la pregunta,
      aclara cuál aplica antes de registrar el valor. Una ruta no responde si el nodo de Jenkins es esta
      máquina u otra: pregunta cuál corresponde y conserva la ruta como dato pendiente de atribuir.
@@ -303,7 +318,7 @@ Si hay varios locks, pregunta cuál vale; el agente podrá quitar el sobrante en
      `nodo_puerto_base = nodePort − (puerto de B − 8080)`: `8083` y `31003` → `31000`.
      Si difieren réplicas, recursos o bases entre servicios del entorno, muestra todos y pregunta.
      Solo toma `devops.registry` si coincide en todos los deployments; si difiere, muestra y pregunta.
-     `cors_origenes` y `clerk_issuer_uri` no se detectan: ausencia esperada; pregúntalos como hasta ahora.
+     `cors_origenes` y `clerk_issuer_uri` no se detectan: ausencia esperada; pregúntalos según la regla de equivalentes confirmados y reutilización por entorno de este paso.
 2. **Los valores de la plantilla son de otro proyecto**: `devops.registry`, URLs, issuer de Clerk, canal de Slack,
    rutas del JDK, nombre de la base, orígenes CORS, `sonarqube.project_key` del front… Nunca los propongas como si fueran
    del usuario. Márcalos "hay que decidirlo", salvo que coincidan con lo detectado.
@@ -407,6 +422,22 @@ Si hay varios locks, pregunta cuál vale; el agente podrá quitar el sobrante en
       respondió, no repitas. Sin Jenkinsfile, ofrece los IDs de plantilla y di que debe crearlos en Jenkins.
     - `gateway_nodo_puerto` y `cors_origenes`: solo si hay gateway (`backend.gateway` distinto de `null`);
     - `clerk_issuer_uri`: el de ese entorno, solo con `autenticacion: clerk`.
+    - Para `devops.entornos.<e>.cors_origenes` y `devops.entornos.<e>.clerk_issuer_uri`, si ya hay una
+      respuesta equivalente confirmada en esta preparación, cita sus valores y la clave de origen:
+      `backend.cors_origenes` / `integraciones.clerk_issuer_uri`, o la del entorno declarado antes en
+      `devops.entornos`. Si hay varias, usa la del entorno anterior y, si no existe, la local. Explica en una
+      línea la diferencia de contexto: la configuración local corresponde al navegador en la máquina del
+      usuario; la del entorno corresponde al front desplegado (para Clerk, su issuer de autenticación).
+      Como excepción a la regla de respuesta libre, ofrece «reutilizar [valores citados]» junto a la
+      respuesta libre solo si se cumplen las condiciones siguientes. CORS requiere una lista no vacía
+      de orígenes HTTP/HTTPS sin ruta ni barra final y que ningún origen sea `localhost`, `127.0.0.1`,
+      `::1` ni una IP privada, en cualquier entorno con `desplegar: true`, incluido el primero.
+      Si alguno lo es, cita los valores y explica que son direcciones locales o privadas que no se
+      proponen para el navegador del front desplegado; pide solo respuesta libre. Para Clerk puedes
+      ofrecer reutilizar el issuer confirmado si es HTTPS sin barra final, sin marcarlo como recomendado.
+      Si los valores no cumplen el formato, pide solo respuesta libre y explica por qué.
+      Mantén las condiciones anteriores: solo entornos con `desplegar: true`, CORS solo con gateway e
+      issuer solo con `autenticacion: clerk`.
     - Si comparten clúster, avisa del consumo conjunto de réplicas y recursos antes de recomendarlos.
     - Propón `java_home_contenedor` por la carpeta del tar de `jdk_url` bajo `/opt/` y pide confirmación;
       si el nombre no permite saberla, pregunta sin descargar ni inventarla. Para `java_home_nodo`, pregunta
@@ -541,16 +572,32 @@ en la preparación, sin inventar detecciones ni dejar marcadores en el cierre:
    `chore: preparar el proyecto para .agents`. Los workflows requieren Git con árbol limpio: si falta
    repositorio o primer commit, lo prepara el usuario, nunca tú. Explica lo pendiente según `git status --short`.
 2. Si las versiones elegidas difieren del código detectado, ejecutar `.agents/workflows/change-version.md`
-   (back, front y SQL según corresponda) antes de los workflows generales; o que el usuario ajuste `stack.yaml`. `change-version` carga su propia documentación: su entrada no bloquea por documentación faltante del catálogo.
-   Prompt: «Sigue `.agents/workflows/change-version.md` para cambiar [tecnologías: versiones detectadas → elegidas]
-   en [servicios o rutas reales]. Presenta el plan y espera mi aprobación antes de escribir».
+   (back, front y SQL según corresponda) antes de los workflows generales; o que el usuario ajuste `stack.yaml`.
+   `change-version` carga su propia documentación: su entrada no bloquea por documentación faltante del catálogo.
+   El prompt identifica las tecnologías cuyas versiones de `stack.yaml` difieren del código, con
+   «detectada → elegida». El workflow propone BOM, trenes y plugins y el usuario los aprueba; el prompt
+   no fija sus versiones.
+   Prompt: «Sigue `.agents/workflows/change-version.md` para alinear el código con las versiones de
+   `stack.yaml` que difieren [tecnología: detectada → elegida] en [servicios o rutas reales]. No edites
+   `stack.yaml`; si hiciera falta cambiarlo, dilo y espera al usuario. El workflow propone BOM, trenes y
+   plugins y yo los apruebo. Presenta el plan y espera mi aprobación antes de escribir».
 3. Si `herramientas.codebase_memory` es `true`, ejecutar `.agents/workflows/codebase-memory.md` para crear el grafo antes de `preparar-documentacion`; sin grafo, el cierre de `preparar-documentacion` bloquea con `GRAFO`.
    Prompt: «Sigue `.agents/workflows/codebase-memory.md` para crear o actualizar el grafo de este proyecto desde su raíz».
-4. Ejecutar `.agents/workflows/preparar-documentacion.md`: propone URL oficiales, las carga con aprobación
-   y comprueba versión y citas; servicios con igual versión comparten documentación. Si avisa de una
-   librería fuera de catálogo, usar allí «Ampliar el catálogo del proyecto», nunca editarlo a mano.
-   Prompt: «Sigue `.agents/workflows/preparar-documentacion.md` para preparar documentación de [tecnologías y versiones reales].
-   Muéstrame las fuentes y su revisión y espera mi aprobación antes de cargarlas o asociarlas».
+4. Ejecutar `.agents/workflows/preparar-documentacion.md` después del commit y, si aplica, del grafo:
+   propone URL oficiales, las carga con aprobación y comprueba versión y citas; servicios con igual versión
+   comparten documentación. Si avisa de una librería fuera de catálogo, usar allí «Ampliar el catálogo del
+   proyecto», nunca editarlo a mano. Si aplica el paso 2, `change-version` ya carga y asocia la documentación
+   de las versiones que cambia; `preparar-documentacion` se sigue ejecutando para el cotejo global,
+   el preflight de cierre y para completar lo que falte, reutilizando lo cargado.
+   Si aplica el paso 2 y `change-version` no terminó, ejecútalo primero.
+   Si aplica el paso 2, prompt: «Sigue `.agents/workflows/preparar-documentacion.md` para completar la
+   documentación que falte según su diagnóstico, con las versiones que tenga ahora el código; reutiliza lo ya
+   cargado. Muéstrame las fuentes y su revisión y espera mi aprobación antes de cargarlas o asociarlas».
+   Sin el paso 2, prompt: «Sigue `.agents/workflows/preparar-documentacion.md` para preparar documentación de
+   [tecnologías y versiones reales]. Muéstrame las fuentes y su revisión y espera mi aprobación antes de
+   cargarlas o asociarlas».
+   Ningún prompt del cierre enumera versiones de BOM, trenes ni plugins que dependan de otras elegidas;
+   `preparar-documentacion` las obtiene de su diagnóstico.
 5. Resto según el caso:
    - Back sin servicios: leer `.agents/skills/service-creator/references/servicio-initializr.md` y dar los
      valores reales obtenidos con `node .agents/scripts/stack.mjs get <clave>`, incluidas las coordenadas

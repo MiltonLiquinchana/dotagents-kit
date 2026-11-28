@@ -812,6 +812,7 @@ def entradas_registradas(data):
 
 
 def principal_compatible(principal, meta, catalog, kind):
+    """El insight debe traer la versión ya normalizada; aquí solo se compara."""
     if not isinstance(principal, dict):
         raise ValueError()
     name, detected = principal.get('tecnologia'), principal.get('version')
@@ -927,8 +928,24 @@ def tecnologias_usadas(inventory, catalog, resoluciones_bom=None):
     return result
 
 
+def remedio_fuente_aportada(origen):
+    if origen == 'usuario-archivo':
+        command = 'cargar NOTEBOOK --archivo RUTA --tipo TIPO --documentacion-publica'
+    else:
+        command = 'cargar NOTEBOOK URL --usuario-url --tipo TIPO'
+    return ('revisa con ' + command + ' y, tras aprobar su hash, repite con '
+            '--sha256-aprobado SHA256 --confirmar; añade --confirmar-correspondencia solo si '
+            'la correspondencia no es inequívoca y el usuario la confirma')
+
+
+def normalizar_version_detectada(valor: str) -> str:
+    return re.sub(r'^[vV](?=\d)', '', valor)
+
+
 def fuente_compatible(tech, project, source):
     principal = source.get('version_principal')
+    if isinstance(principal, str):
+        principal = normalizar_version_detectada(principal)
     if not isinstance(project, str) or not isinstance(principal, str):
         return False
     try:
@@ -1938,19 +1955,43 @@ class Client:
         return self.request('POST', '/api/notes', {'notebook_id': nb, 'title': title, 'content': json.dumps(content, ensure_ascii=False)})
 
     def records(self, nb, kind):
-        records = []
+        identities = {}
         for note in self.notes(nb):
             # Search devuelve IDs, no fragmentos: recuperar el cuerpo solo en este notebook.
             if not str(note.get('title', '')).startswith(kind + ':'):
                 continue
             if not isinstance(note.get('content'), str):
-                note = self.request('GET', '/api/notes/' + urllib.parse.quote(note['id'], safe=''))
+                note = dict(note, **self.request('GET', '/api/notes/' + urllib.parse.quote(note['id'], safe='')))
             try:
                 record = json.loads(note['content'])
-                if record.get('administrado_por') == OWNER:
-                    records.append(record)
             except (ValueError, KeyError, TypeError):
                 continue
+            if not isinstance(record, dict) or record.get('administrado_por') != OWNER:
+                continue
+            key = record.get('fuente') if kind == 'fuente' else record.get('clave')
+            identities.setdefault(key, []).append((note, record))
+        records = []
+        for key in sorted(identities, key=str):
+            group = identities[key]
+            if len(group) == 1:
+                records.append(group[0][1])
+                continue
+            ordered = []
+            for note, record in group:
+                if not (note.get('created') or note.get('created_at')):
+                    note = dict(note, **self.request('GET', '/api/notes/' + urllib.parse.quote(note['id'], safe='')))
+                created = note.get('created') or note.get('created_at')
+                try:
+                    fecha = datetime.fromisoformat(created.replace('Z', '+00:00'))
+                    if fecha.tzinfo is None:
+                        fecha = fecha.replace(tzinfo=timezone.utc)
+                    fecha = fecha.astimezone(timezone.utc)
+                except (ValueError, TypeError, AttributeError):
+                    block('API_FORMATO', 'Hay notas administradas repetidas de una misma fuente o clave sin fecha interpretable; revisa sus metadatos en la API antes de elegir el registro vigente.')
+                ordered.append((fecha, str(note.get('id', '')), record))
+            # Solo ordenar notas de la misma identidad; el ID desempata fechas idénticas.
+            ordered.sort(key=lambda item: (item[0], item[1]))
+            records.extend(record for _, _, record in ordered)
         return records
 
     def text(self, source):
@@ -2086,27 +2127,40 @@ class Client:
         if existing_sources:
             source_id = existing_sources[0]['id']
             matched = [r for r in existing if r.get('fuente') == source_id]
-            record = next((r for r in matched if not r.get('valida')), matched[-1] if matched else None)
+            record = matched[-1] if matched else None
+            registered = next((s for _, _, e in entradas_registradas(local_data)
+                               if e['notebook'] == identifier for s in e['fuentes'] if s['id'] == source_id), None)
+            aportada = next((r for r in (record, registered)
+                             if r and r.get('origen') in ('usuario-url', 'usuario-archivo')), None)
+            if aportada and not user_source:
+                if revalidar:
+                    block('REVALIDAR', 'La fuente tiene procedencia aportada por el usuario; no se revalida con --entrada: ' + remedio_fuente_aportada(aportada['origen']) + '.')
+                if aportada['tipo'] != entry['tipo']:
+                    block('CATALOGO', 'La fuente aportada se aprobó con tipo ' + aportada['tipo'] + ', distinto del tipo ' + entry['tipo'] + ' de la entrada; no se cambia su tipo: ' + remedio_fuente_aportada(aportada['origen']) + '.')
+                # Reutilizar desde el catálogo tampoco convierte su procedencia en catálogo.
+                evidence = {k: aportada[k] for k in ('origen', 'confirmada_usuario', 'procedencia_url',
+                            'aprobacion_sha256', 'oficial', 'contenido_sha256', 'archivo', 'archivo_sha256',
+                            'mime', 'tamano', 'evidencia_previa') if k in aportada}
             source = {}
             valid = bool(record and record.get('valida') and record.get('version') == meta['version'])
             reason = record.get('motivo', 'registro sin validación') if record else 'Fuente existente sin registro validado; no se vuelve a cargar'
             if valid or user_source:
                 source = self.fuente_remota(source_id)
-            if usuario_url and correspondencia:
+            if valid:
+                valid = digest(self.text(source)) == record.get('sha256')
+                if not valid:
+                    reason = 'El texto cambió; fuente excluida hasta revisión, sin recargar.'
+            if user_source and (not valid or (usuario_url and correspondencia)):
                 self.comprobar_url_final(source, url)
                 escanear_contenido(self.text(source))
-                if normalizar_cita(text) != normalizar_cita(self.text(source)):
+                if usuario_url and normalizar_cita(text) != normalizar_cita(self.text(source)):
                     block('FUENTE_TEXTO', 'El texto guardado difiere de la fuente revisada; revisa retirar-ausentes si falta el objeto. Si existe, aporta otra URL o archivo público revisado; no lo borres a mano.')
                 transformation_id, embed = self.preparar_validacion_carga(identifier, meta)
                 record = dict(evidence, administrado_por=OWNER, fuente=source_id,
                               tipo=entry['tipo'], version=meta['version'], valida=False)
                 result = self.finalizar_carga(identifier, meta, entry, record, transformation_id,
-                                             url, embed, negative, True, True, text, revalidar=True)
+                                             url, embed, negative, True, usuario_url, text, revalidar=True)
                 return dict(result, reutilizada=True)
-            if valid:
-                valid = digest(self.text(source)) == record.get('sha256')
-                if not valid:
-                    reason = 'El texto cambió; fuente excluida hasta revisión, sin recargar.'
             if revalidar and not valid:
                 transformation_id, embed = self.preparar_validacion_carga(identifier, meta)
                 record = dict(evidence, administrado_por=OWNER, fuente=source_id,
@@ -2114,11 +2168,16 @@ class Client:
                 return self.finalizar_carga(identifier, meta, entry, record, transformation_id,
                                             url, embed, negative, False, False, None, revalidar=True)
             if not valid:
-                reason += ('; bórrala en Open Notebook y vuelve a cargarla' if user_source else
-                           '; usa --revalidar --confirmar para validarla de nuevo')
+                if aportada or user_source:
+                    reason += '; ' + remedio_fuente_aportada((aportada or evidence)['origen'])
+                else:
+                    reason += '; usa --revalidar --confirmar para validarla de nuevo'
             local_record = dict(record or {})
             local_record.update(evidence)
-            local_record.update(fuente=source_id, url=url, tipo=entry['tipo'], valida=valid, motivo=reason)
+            if aportada and not user_source:
+                local_record.pop('entrada', None)
+            local_record.update(fuente=source_id, url=aportada.get('url') if aportada else url,
+                                tipo=entry['tipo'], valida=valid, motivo=reason)
             if user_source:
                 try:
                     escanear_contenido(self.text(source))
@@ -2256,6 +2315,10 @@ class Client:
             detected = principal.get('version')
             if not isinstance(principal.get('tecnologia'), str) or not isinstance(detected, str):
                 raise ValueError()
+            principal['version'] = normalizar_version_detectada(detected)
+            for referencia in references:
+                referencia['version'] = normalizar_version_detectada(referencia['version'])
+            detected = principal['version']
             name_compatible = tecnologia_compatible(principal['tecnologia'], meta, self.catalog)
             compatible = principal_compatible(principal, meta, self.catalog, entry['tipo'])
             if not name_compatible and principal['tecnologia'].strip() and record.get('origen') == 'usuario-url' and record.get('confirmada_usuario') and not negative:
@@ -2440,7 +2503,7 @@ class Client:
         key = digest(tech + '\n' + expected + '\n' + ' '.join(question.casefold().split()))
         self.request('POST', '/api/search', {'query': question, 'type': 'text', 'notebook_id': identifier})
         # El buscador no devuelve necesariamente fragmentos: solo se aceptan notas de este notebook.
-        for note in self.records(identifier, 'respuesta'):
+        for note in reversed(self.records(identifier, 'respuesta')):
             if note.get('clave') == key and self.verify(note, sources):
                 return finish(dict(note['resultado'], nivel='notas', tokens=0, tokens_contexto=0, tokens_aproximados=0))
         prompt = ('Responde solo desde el contexto. Devuelve JSON sin bloques Markdown con respuesta, fuente '

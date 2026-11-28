@@ -4,6 +4,10 @@ description: Planificar y aprobar un cambio coordinado de versión en todos los 
 
 # Cambiar una versión del back
 
+Para toda la documentación de este workflow, antes y después de escribir, sigue la regla de ejecución
+de `.agents/workflows/preparar-documentacion.md` (una orden que escribe por llamada, esperar y leer
+su resultado antes de la siguiente).
+
 1. **Preflight y diagnóstico inicial.**
    - Ejecuta `bash .agents/scripts/preflight.sh --workflow change-version --fase entrada`. Conserva salida y exit: los códigos y clases están en `.agents/config/codigos.yaml`. Exit 1 detiene; PREPARACION solo permite proponer el comando con permiso y repetir, nunca seguir como pendiente. Exit 2 es error de uso. Exit 0 permite elaborar el plan, sin dar por pasados controles omitidos.
    - Ejecuta `node .agents/scripts/inventario-versiones.mjs` y conserva su JSON para la tabla de cambios. No ejecutes Groovy ni resuelvas expresiones fuera del enlace literal local admitido.
@@ -17,6 +21,7 @@ description: Planificar y aprobar un cambio coordinado de versión en todos los 
    - Si la tabla antes/después cambia `backend.java` o el control de versiones bloquea por el wrapper, incluye por servicio el wrapper actual (`gradle_wrapper` del inventario), el destino y el mínimo para ejecutar esa Java según `.agents/config/gradle-java.json`. El destino debe admitir el JDK del nodo y el JDK local que ejecutará Gradle; confirma sus versiones, sin confundirlas con el toolchain. Si Java no figura en la tabla o el wrapper no es resoluble/comparable, declara la limitación y pide al mantenedor que amplíe la tabla o al usuario que confirme la compatibilidad antes de aprobar el destino; no inventes un mínimo.
 
 3. **Plan de documentación y citas (antes de escribir builds).**
+   - Sigue la regla de ejecución de `.agents/workflows/preparar-documentacion.md`: una orden que escribe por llamada, espera y lee el resultado antes de seguir.
    - Para las versiones **literales de destino** aprobadas en la tabla (JDK, Spring Boot, plugins y dependencias con versión literal): prepara y carga documentación con `.agents/workflows/preparar-documentacion.md`, invocado con la excepción de change-version (versiones de destino aprobadas, no las del inventario actual) solo para `preparar` y `cargar`, nunca para `asociar`. Todas las URL, asociaciones, archivos y reactivaciones requieren aprobación.
    - Obtén citas de compatibilidad con `python3 -I -B .agents/scripts/documentacion.py preguntar TECNOLOGIA PREGUNTA --version V` y regístralas en el plan como `datos_verificados` (Spring Boot con Java: B14). Si falta concretar una URL, se aprueba como enmienda del mismo plan antes de cargarla.
    - Para Gradle/Java cita `.agents/config/gradle-java.json`: registra en el plan su `fuente`, `verificado` y el mínimo de `minimos` para ejecutar Gradle. Gradle se respalda con esa tabla, sin preparar, cargar ni asociar documentación de Gradle en el catálogo; esta compatibilidad queda exceptuada de la ampliación genérica indicada abajo.
@@ -48,6 +53,7 @@ description: Planificar y aprobar un cambio coordinado de versión en todos los 
    - Para cada subida de wrapper aprobada, desde la carpeta del servicio ejecuta `./gradlew wrapper --gradle-version <X> --gradle-distribution-sha256-sum <suma publicada>`, con permiso del usuario para Gradle y red y usando el JDK aprobado que admite el wrapper actual. Incluye en la revisión los cuatro archivos del wrapper enumerados en el plan; no sustituyas la suma publicada por una calculada sobre una descarga sin verificar.
 
 7. **Documentación posterior y asociación.**
+   - Sigue la regla de ejecución de `.agents/workflows/preparar-documentacion.md`: una orden que escribe por llamada, espera y lee el resultado antes de seguir.
    - Ejecuta la preparación/carga aprobada que falte tras escribir, incluido `resolver-bom` y documentación de las tecnologías con `bom_propiedad` (Lombok; con gateway, Spring Cloud Gateway).
 <!-- si devops.infraestructura=jenkins-kubernetes -->
      Incluye Spring Cloud Kubernetes cuando se use.

@@ -4,6 +4,10 @@ description: Planificar y aprobar un cambio de versión del front y su documenta
 
 # Cambiar una versión del front
 
+Para toda la documentación de este workflow, antes y después de escribir, sigue la regla de ejecución
+de `.agents/workflows/preparar-documentacion.md` (una orden que escribe por llamada, esperar y leer
+su resultado antes de la siguiente).
+
 1. **Preflight y diagnóstico inicial.**
    - Ejecuta `bash .agents/scripts/preflight.sh --workflow change-version --fase entrada`. Conserva salida y exit: los códigos y clases están en `.agents/config/codigos.yaml`. Exit 1 detiene; PREPARACION solo permite proponer el comando con permiso y repetir, nunca seguir como pendiente. Exit 2 es error de uso. Exit 0 permite elaborar el plan, sin dar por pasados controles omitidos.
    - Ejecuta `node .agents/scripts/inventario-versiones.mjs` y conserva su JSON para la tabla de cambios. No ejecutes Groovy ni resuelvas expresiones fuera del enlace literal local admitido.
@@ -16,6 +20,7 @@ description: Planificar y aprobar un cambio de versión del front y su documenta
    - `frontend-architect` prepara un único plan con tabla antes/después, motivo, `package.json` y lock afectados, compatibilidad y pruebas. No confundas Next, React y TypeScript.
 
 3. **Documentación y citas antes de escribir.**
+   - Sigue la regla de ejecución de `.agents/workflows/preparar-documentacion.md`: una orden que escribe por llamada, espera y lee el resultado antes de seguir.
    - Prepara/carga documentación de las versiones literales de destino aprobadas con `.agents/workflows/preparar-documentacion.md`, usando la excepción de change-version solo para `preparar` y `cargar` (nunca `asociar`). URL, asociaciones y archivos con aprobación explícita.
    - Citas de compatibilidad obtenidas con `documentacion.py preguntar ... --version V` entran al plan como `datos_verificados`. Si falta concretar una URL, se aprueba como enmienda del mismo plan.
    - Si no hay fuente en catálogo para una compatibilidad, el plan lo dice y propone ampliar catálogo o seguir sin cita; decide el usuario.
@@ -29,6 +34,7 @@ description: Planificar y aprobar un cambio de versión del front y su documenta
 6. **Escritura.** Tras las ediciones del stack por el usuario (si tocan), `file-writer` cambia solo los manifiestos y lock aprobados. La actualización del lock y sus comandos deben constar en el plan; pide permiso para instalaciones o descargas. No aceptes rangos para Next.
 
 7. **Asociación y archivo de documentación.** Ejecuta preparación/asociaciones aprobadas; archiva la versión anterior solo sin usuarios y con confirmación. Si se vuelve atrás, propone reactivar el notebook existente, sin duplicarlo. Conserva JSON, Markdown y salidas literales.
+   - Sigue la regla de ejecución de `.agents/workflows/preparar-documentacion.md`: una orden que escribe por llamada, espera y lee el resultado antes de seguir.
 
 8. **Verificación propia.**
    - `node .agents/scripts/comprobar-versiones.mjs`
