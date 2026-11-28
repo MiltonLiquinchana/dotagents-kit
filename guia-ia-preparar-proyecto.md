@@ -226,20 +226,23 @@ El issuer de Clerk no se busca. Registra los comandos fallidos o sin salida para
 ## Paso 4 — Preguntar
 
 **No hay pregunta sin explicación.** Esta regla se aplica a las preguntas sobre claves del paso 4,
-sin excepciones salvo la confirmación abreviada descrita al final. También se aplica a la primera
-pregunta de una clave, a claves con detección inequívoca, a booleanas y a preguntas de respuesta libre
-(etiquetas, rutas, IDs). Reproduce el bloque de cada clave con las etiquetas literales de sus
-encabezados en negrita en `<SOURCES>/config/claves.md`: **En resumen:**, **Dónde se ve en tu proyecto:**,
+salvo la confirmación abreviada definida al final. Incluye primeras preguntas, detección inequívoca,
+booleanas y respuesta libre (etiquetas, rutas, IDs). Reproduce el bloque de cada clave con las etiquetas
+literales en negrita de `<SOURCES>/config/claves.md`: **En resumen:**, **Dónde se ve en tu proyecto:**,
 **Para qué se usa:**, **Qué pasa si está mal:**, **Cambiarla después:** y los párrafos **Si …:** de sus
-opciones. Conserva las etiquetas que tenga la ficha; no las sustituyas por prosa sin rótulos. El bloque
-va en el mismo mensaje que la pregunta. También se aplica a preguntas agrupadas (el bloque de cada
-clave) y seguidas. Con herramienta de preguntas, escribe esos bloques justo antes de la llamada en
-ese mismo turno. Antes de cada pregunta comprueba que ese texto contiene el bloque de cada clave que
-preguntas, con sus etiquetas; si falta alguno, escríbelo primero. Una línea dentro de la pregunta no
-sustituye el bloque. La propia pregunta resume en una línea **para qué se usa** y cada opción dice su
-consecuencia. No se exige bloque de ficha al glosario ni a preguntas que no son claves, como la
-selección del notebook en SQL. Las preguntas anteriores al paso 4 (punto de partida y stack) no
-cambian. En una confirmación basta repetir para qué se usa y la consecuencia.
+opciones. Conserva las etiquetas de la ficha; no las sustituyas por prosa sin rótulos. El bloque va en el
+mismo mensaje que la pregunta, también en preguntas agrupadas (un bloque por clave) y seguidas.
+Con herramienta de preguntas, antes de cada llamada escribe y comprueba en ese mismo turno el bloque
+con sus etiquetas de cada clave que vas a preguntar; tras recibir una respuesta, nunca lances la pregunta
+siguiente sin texto previo en ese turno: primero va, si procede, una línea por cada clave registrada sin
+pregunta, con su valor y causa, y después el bloque de cada clave que vas a preguntar.
+El aviso nunca sustituye al bloque, tampoco una línea dentro de la pregunta. La propia pregunta resume
+en una línea **para qué se usa** y cada opción dice su consecuencia. No se exige bloque al glosario ni a
+preguntas que no son claves, como la selección del notebook en SQL. Las preguntas anteriores al paso 4
+(punto de partida y stack) no cambian. Una confirmación es volver a preguntar una clave cuyo bloque ya
+mostraste, por ejemplo para confirmar un literal numérico o una respuesta escrita en «Other»; basta
+repetir para qué se usa y la consecuencia. La primera pregunta de una clave nunca es una confirmación.
+Escribe primero cualquier bloque que falte antes de preguntar.
 
 Muestra una vez el glosario «Palabras que usan estas fichas» de `<SOURCES>/config/claves.md` antes de la primera pregunta.
 En SQL, lista primero los nombres de notebooks y pregunta cuál contiene datos de prueba: ese y sus alias
@@ -281,7 +284,19 @@ Si hay varios locks, pregunta cuál vale; el agente podrá quitar el sobrante en
      sin dato previo, distingue el ejemplo de la ficha y el valor de plantilla. No dupliques esa opción
      con su literal de ejemplo.
      No ofrezcas valores rechazados, como un entorno sin acciones o `documentacion.url_api: null`, `imagen: ninguna` o un segundo `construir`.
-   - Si lo ya decidido y los requisitos dejan una sola opción válida, no la preguntes: informa el valor y su causa (por ejemplo, «`main.desplegar` queda en `true` porque `promover` lo exige») y sigue.
+   - Solo si las respuestas ya dadas, `config/requisitos.yaml` o una regla de combinación de esta guía
+     (por ejemplo, `promover` exige `desplegar: true`) dejan un único valor válido, no lo preguntes:
+     informa el valor y su causa (por ejemplo, «`main.desplegar` queda en `true` porque `promover` lo exige»).
+     Que lo detectado coincida con la plantilla o con el valor por defecto no es una de esas causas:
+     esa clave se pregunta con su bloque completo, como cualquier primera pregunta.
+     Esto no cambia las claves que esta guía manda no preguntar o informar sin preguntar: las de la
+     lista del ítem 1 y las de «no cambiar» del ítem 4, `gestion_usuarios: ninguna` cuando corresponde,
+     `documentacion.modelo_*` y las claves dependientes que se quitan, entre otras indicadas expresamente.
+     Si solo hay un valor real que proponer, el detectado, pregunta en texto, sin herramienta de preguntas,
+     con el bloque completo y esta línea, rellenando valor, archivo y línea con la detección real:
+     «Detectado: `<valor>` (`archivo:línea`). Responde «sí» para conservarlo o escribe otro valor.»
+     Espera su respuesta: nunca hagas una pregunta de una sola opción ni decidas tú. No inventes una
+     segunda opción, no dupliques el valor ni añadas una opción «Other» para salvar el límite de la herramienta.
    - Si los valores son números (réplicas, puertos), pon en cada opción el literal con su unidad (`1 réplica`, `2 réplicas`) o usa letras; si la respuesta es un número suelto y había opciones, confirma el valor literal antes de registrarlo.
    - El origen es «detectado», «valor por defecto» o «hay que decidirlo». Cita archivo y línea literal de
      lo detectado; informa diferencias entre archivos. Para lo no detectado explica dónde acabará el valor.
@@ -321,7 +336,8 @@ Si hay varios locks, pregunta cuál vale; el agente podrá quitar el sobrante en
      `cors_origenes` y `clerk_issuer_uri` no se detectan: ausencia esperada; pregúntalos según la regla de equivalentes confirmados y reutilización por entorno de este paso.
 2. **Los valores de la plantilla son de otro proyecto**: `devops.registry`, URLs, issuer de Clerk, canal de Slack,
    rutas del JDK, nombre de la base, orígenes CORS, `sonarqube.project_key` del front… Nunca los propongas como si fueran
-   del usuario. Márcalos "hay que decidirlo", salvo que coincidan con lo detectado.
+   del usuario. Márcalos "hay que decidirlo", salvo que coincidan con lo detectado: esa coincidencia los marca
+   "detectado" en la pregunta, con archivo y línea; no evita preguntarla con su bloque completo.
 3. **Versiones** (`backend.java`, `backend.spring_boot`, la de `next`…): son las versiones **con las que
    el usuario va a trabajar**, y todo el `.agents` se genera con ellas (plantillas, comprobaciones del
    preflight, instrucciones para crear servicios). Explícale que:
@@ -379,7 +395,7 @@ Si hay varios locks, pregunta cuál vale; el agente podrá quitar el sobrante en
     respuesta parece un valor (empieza por `sk_`, `pk_` o `whsec_`, contiene `=` o es larga y aleatoria),
     no la escribas y pide el nombre. En el back, con `gestion_usuarios: organizaciones`, ofrece añadir
     `CLERK_DEFAULT_INVITER_USER_ID` (opcional: el invitador por defecto) a la lista de la plantilla.
-12. **SonarQube (back y front):** informa que necesita Java ≥ 21 del PATH y pide permiso para ejecutar `node .agents/scripts/instalar-sonar-mcp.mjs` después de generar: descarga el servidor oficial con huella fijada en `~/.dotagentskit` (licencia SONAR Source-Available License v1.0). Comprueba solo que estén definidas `SONARQUBE_URL` y `SONARQUBE_TOKEN`, sin mostrar ni leer sus valores. Si faltan, pide al usuario exportarlas en el entorno de su herramienta. No preguntes el nombre de un MCP de SonarQube ni su URL para `stack.yaml`; el kit no depende de entradas del agente. Si no autoriza instalar, informa el bloqueo y no lo ejecutes. Un `SONARQUBE_MCP_JAR` propio existente y legible permite usar su instalación.
+12. **SonarQube (back y front):** informa que necesita Java ≥ 21 del PATH y pide permiso para ejecutar `cd "<PROYECTO>" && node .agents/scripts/instalar-sonar-mcp.mjs` en el paso 7.6, después de `validate`: descarga el servidor oficial con huella fijada en `~/.dotagentskit` (licencia SONAR Source-Available License v1.0). Comprueba solo que estén definidas `SONARQUBE_URL` y `SONARQUBE_TOKEN`, sin mostrar ni leer sus valores. Si faltan, pide al usuario exportarlas en el entorno de su herramienta. No preguntes el nombre de un MCP de SonarQube ni su URL para `stack.yaml`; el kit no depende de entradas del agente. Si no autoriza instalar, informa el bloqueo y no lo ejecutes. Un `SONARQUBE_MCP_JAR` propio existente y legible permite usar su instalación.
     **Otros nombres de MCP** (`mcp.*`, como el de MySQL): son los nombres registrados por el usuario; pregúntaselos sin leer la configuración de sus herramientas.
 13. **`conexiones` (stack `mysql`):** decide si los agentes pueden ejecutar en una base real. Propón `{}`
     (ninguna) y explica que, si añade una conexión, los pasos que ejecutan en la base podrán usarla. Solo
@@ -475,9 +491,12 @@ Si hay varios locks, pregunta cuál vale; el agente podrá quitar el sobrante en
    motivo, incluido cada `null` y cada clave quitada.
 2. Comprueba que no haya credenciales ni valores de plantilla sin confirmar. La comprobación de formato
    completo la hace la simulación del paso 7.1; no declares que valida antes de ejecutarla.
-3. Si eligió versiones distintas de las detectadas, explica que necesitará `.agents/workflows/change-version.md` para alinear el
+3. Si no puedes confirmar que mostraste el bloque de alguna clave de la tabla (por ejemplo, porque la
+   sesión se compactó), muestra su **En resumen:** y su **Qué pasa si está mal:** antes de pedir el sí;
+   no vuelvas a preguntarla salvo que el usuario quiera cambiarla.
+4. Si eligió versiones distintas de las detectadas, explica que necesitará `.agents/workflows/change-version.md` para alinear el
    código o que el usuario ajuste `stack.yaml`. Conserva este aviso también en el cierre.
-4. **Espera un sí explícito.** Si pide cambios, aplícalos y vuelve a enseñarlo.
+5. **Espera un sí explícito.** Si pide cambios, aplícalos y vuelve a enseñarlo.
 
 ## Paso 6 — Escribir los dos archivos
 
@@ -499,12 +518,20 @@ No crees ningún otro archivo.
 
 ## Paso 7 — Generar el `.agents`
 
-1. Desde `<PROYECTO>`, ejecuta la simulación: valida el `stack.yaml` completo antes de generar y no escribe.
+En los pasos 7 y 8, cada orden con ruta relativa se ejecuta con `cd "<PROYECTO>" && <orden>` en la
+misma llamada: sustituye `<PROYECTO>` por la ruta absoluta entre comillas. No uses un `pwd` aparte.
+Las únicas órdenes que escriben en estos pasos son la generación con `--si` de 7.3 y la instalación
+sin `--comprobar` de 7.6. Ejecuta cada una una vez; antes de repetirla por cualquier motivo, comprueba
+su estado sin escribir, como se indica en esos puntos.
+
+1. Ejecuta la simulación: valida el `stack.yaml` completo antes de generar y no escribe.
+   Sin `--simular`, el generador no simula: sin acciones pendientes reescribe `.agents/.generado.json`
+   sin preguntar. La simulación siempre lleva `--simular`.
    Resume su salida con estos comandos; conserva las salidas y fallos para el reporte final:
 
    ```bash
-   python3 -I -B .agents/actualizar.py --kit <KIT> --simular 2>&1 | grep -E '^(crear|modificar|borrar): ' | cut -d: -f1 | sort | uniq -c
-   python3 -I -B .agents/actualizar.py --kit <KIT> --simular 2>&1 | grep -E '^(falta en tu stack.yaml|ya no se usa|BLOCKED|ERROR|crearía)'
+   cd "<PROYECTO>" && python3 -I -B .agents/actualizar.py --kit <KIT> --simular 2>&1 | grep -E '^(crear|modificar|borrar): ' | cut -d: -f1 | sort | uniq -c
+   cd "<PROYECTO>" && python3 -I -B .agents/actualizar.py --kit <KIT> --simular 2>&1 | grep -E '^(falta en tu stack.yaml|ya no se usa|BLOCKED|ERROR|crearía)'
    ```
 
    Enséñale cuántos archivos crea, modifica y borra, y las líneas del segundo comando: avisos de claves,
@@ -512,65 +539,113 @@ No crees ningún otro archivo.
    ejecuta para mostrar las últimas 20 líneas:
 
    ```bash
-   python3 -I -B .agents/actualizar.py --kit <KIT> --simular 2>&1 | tail -n 20
+   cd "<PROYECTO>" && python3 -I -B .agents/actualizar.py --kit <KIT> --simular 2>&1 | tail -n 20
    ```
 
 2. Si hay un `BLOCKED` o un aviso, explícaselo, corrige con él `stack.yaml` (vuelve al paso 5) y repite la
    simulación. No sigas con avisos sin resolver.
-3. Pídele un **"sí" explícito** para generar. Con el sí, ejecuta:
+3. Pídele un **"sí" explícito** para generar. Con el sí, ejecuta una vez:
 
    ```bash
-   python3 -I -B .agents/actualizar.py --kit <KIT> --si
+   cd "<PROYECTO>" && python3 -I -B .agents/actualizar.py --kit <KIT> --si
    ```
 
    `--si` responde a la confirmación del script; en la primera generación no hay archivos editados a mano
    que pueda sobrescribir. La prohibición de `--si` se refiere solo al estado inicial del paso 1:
    si allí ya existía un `.agents` generado, esta guía se detiene; no lo fuerces.
+   Si no sabes si la generación con `--si` llegó a ejecutarse (sesión compactada, herramienta cortada u
+   orden fallida), no la relances: ejecuta la simulación de 7.1 y comprueba si existe el registro:
+
+   ```bash
+   cd "<PROYECTO>" && if test -f .agents/.generado.json; then printf 'registro presente\n'; else printf 'registro ausente\n'; fi
+   ```
+
+   - Sin `crear:`/`modificar:`/`borrar:` y con `.agents/.generado.json` presente, la generación está hecha:
+     sigue con 7.5. Si se perdió la salida, aplica 7.4 y decláralo también en el reporte; no repitas la
+     generación para recuperarla. La lista de variables la verá el usuario la próxima vez que regenere.
+   - Con acciones pendientes, la generación está a medias: enséñalas, resuelve los avisos según 7.2,
+     pide otro «sí» explícito y ejecuta 7.3 una vez.
+   - Si falló porque el directorio no era `<PROYECTO>` (por ejemplo, «No such file» de la ruta del
+     generador), ejecútala una vez con el `cd` correcto. Si escribió algo en otro directorio, informa
+     la ruta y no lo borres.
+   Estas comprobaciones prevalecen sobre el paso 1: un `.agents/.generado.json` creado por 7.3 durante
+   esta guía no es un `.agents` previo. No afectan a la repetición legítima tras un `BLOCKED` de 7.5.
 4. Enséñale la lista final de **variables de entorno** que imprime el script: solo nombres y si están
    "definida" o "no definida" en tu terminal, que puede no ser la suya. El script nunca muestra valores;
-   tú tampoco los pidas.
+   tú tampoco los pidas. Si su salida se perdió, di «la salida de `--si` no está disponible» y basa el
+   reporte en el siguiente recuento, la simulación y `validate`, sin inferir variables ni acciones perdidas:
+
+   ```bash
+   cd "<PROYECTO>" && find .agents -type f | wc -l
+   ```
+
 5. Ejecuta `validate` para enseñar los avisos que la simulación no muestra, como `PERFIL_LOCAL` y `JDK_STACK`.
    La simulación ya comprobó el formato completo; no repitas una lista de reglas en esta guía.
 
    | Stack | Comando |
    |---|---|
-   | `springboot`, `nextjs` | `node .agents/scripts/stack.mjs validate` |
-   | `mysql` | `python3 -B -E .agents/scripts/stack.py validate` |
+   | `springboot`, `nextjs` | `cd "<PROYECTO>" && node .agents/scripts/stack.mjs validate` |
+   | `mysql` | `cd "<PROYECTO>" && python3 -B -E .agents/scripts/stack.py validate` |
 
    Si devuelve `BLOCKED`, corrige `stack.yaml`, repite 7.1–7.2, pide otro «sí» y ejecuta el comando de 7.3.
    Esta repetición pertenece a la generación iniciada por la guía; valida de nuevo y repite hasta que pase.
+6. Solo en back y front, si el usuario autorizó la instalación del MCP de Sonar en el paso 4, ítem 12,
+   ejecútala una vez después de `validate`:
+
+   ```bash
+   cd "<PROYECTO>" && node .agents/scripts/instalar-sonar-mcp.mjs
+   ```
+
+   Antes de repetirla por cualquier motivo, comprueba su estado sin escribir:
+
+   ```bash
+   cd "<PROYECTO>" && node .agents/scripts/instalar-sonar-mcp.mjs --comprobar
+   ```
+
+   Con `OK`, no la repitas. Si no da `OK`, informa el diagnóstico antes de reintentar la instalación
+   autorizada. Sin autorización no instales; conserva el bloqueo en el reporte.
 
 ## Paso 8 — Reporte y siguientes pasos
 
 El reporte final se basa solo en salidas mostradas, citando el comando de cada afirmación:
 
-- de `python3 -I -B .agents/actualizar.py --kit <KIT> --si` (paso 7): archivos creados, modificados
+- de `cd "<PROYECTO>" && python3 -I -B .agents/actualizar.py --kit <KIT> --si` (paso 7): archivos creados, modificados
   y borrados, agrupados por tipo, opciones activas y variables definida/no definida, nunca valores;
+  si se perdió esa salida, di «la salida de `--si` no está disponible» y usa el recuento de 7.4,
+  la simulación y `validate`; no relances la generación ni presentes ese recuento como archivos creados;
 - de `validate` (paso 7.5): resultado literal y todos sus avisos; no ocultes comandos fallidos;
-- en back, de `python3 -I -B .agents/scripts/servicios.py listar`: servicios sin puerto o context-path,
+- de la instalación autorizada del MCP de Sonar (paso 7.6), si aplica: resultado y bloqueos;
+- en back, de `cd "<PROYECTO>" && python3 -I -B .agents/scripts/servicios.py listar`: servicios sin puerto o context-path,
   con su remedio en un plan de `.agents/workflows/incorporate-service.md`; usa la detección permitida para justificar omisiones;
-- en back, de `python3 -I -B .agents/scripts/servicios.py nombres`: muestra por servicio la clave Sonar y su origen para compararla con SonarQube;
+- en back, de `cd "<PROYECTO>" && python3 -I -B .agents/scripts/servicios.py nombres`: muestra por servicio la clave Sonar y su origen para compararla con SonarQube;
   prioridad: systemProp del servicio, propiedad literal del build, group:nombre, o nombre; si no es determinable, muestra el motivo.
   Una propiedad fuera del repositorio puede cambiar la clave efectiva y este cálculo no la ve; no consultes SonarQube durante la guía.
   Si trae `sonarqube.project_key_patron` o `devops.jdk_herramienta`, indica quitarlas; las nuevas claves obligatorias bloquean hasta completarlas.
-- de `git status --short` desde `<PROYECTO>`: qué falta confirmar o ignorar, por ejemplo `logs/` sin ignorar.
+- de `cd "<PROYECTO>" && git status --short`: qué falta confirmar o ignorar, por ejemplo `logs/` sin ignorar.
 No escribas «no existe X» sin un comando mostrado que lo respalde. Ante ausencia o conexión fallida
 inesperada, comprueba la ruta exacta con `ls -la <ruta>`, solo dentro de `<PROYECTO>` o `<KIT>`, nunca sobre `account/`, `.env*`, secretos ni kubeconfig; sospecha del aislamiento de la herramienta y pide
 repetir el comando fuera de él antes de pedir que arranque un servicio. No uses la red durante esta guía.
 
-Explica cómo lanzar los workflows: abre una **sesión nueva** de tu IA en la raíz del proyecto.
-El agente lee `AGENTS.md` al empezar: abre otra sesión después de preparar, fusionar o cambiar de rama.
-Crea antes una rama `feature/*` si trabajas por ramas y pega el prompt del paso correspondiente.
-Las tareas de cambios presentan un plan y esperan tu aprobación antes de escribir; codebase-memory
-conserva su recorrido de indexación, sin plan de cambios propio.
+El reporte incluye siempre la siguiente lista en este orden, indicando qué condiciones se cumplen y
+por qué. Antes de los prompts, explica en ese mismo reporte cómo lanzar los workflows: abre una
+**sesión nueva** de tu IA en la raíz del proyecto. El agente lee `AGENTS.md` al empezar: abre otra sesión
+después de preparar, fusionar o cambiar de rama. Crea antes una rama `feature/*` si trabajas por ramas
+y pega el prompt del paso correspondiente. Las tareas de cambios presentan un plan y esperan tu
+aprobación antes de escribir; codebase-memory conserva su recorrido de indexación, sin plan de cambios propio.
 
-Presenta siempre esta lista en este orden, indicando qué condiciones se cumplen y por qué.
-Entrega los prompts siguientes listos para pegar: sustituye los corchetes por datos reales obtenidos
-en la preparación, sin inventar detecciones ni dejar marcadores en el cierre:
+El reporte incluye, en el mismo mensaje que la lista, el texto completo de cada prompt aplicable,
+cada uno en su bloque de código; nombrar el workflow no basta. Los prompts aplicables son, en lista
+cerrada, los de los ítems 2 a 5 cuyo condicional se cumple, y los dos de adoptar/refactorizar de su
+stack cuando el proyecto tiene código, marcados como opcionales. El ítem 1 (`preparar-proyecto.sh`)
+es una orden para el usuario, no un prompt. En el ítem 4 entrega solo la variante que corresponde.
+Los `[…]` y `<…>` de las plantillas de esta guía son instrucciones para ti: sustitúyelos, corchetes y
+signos angulares incluidos, por los datos reales obtenidos en la preparación; el texto final no contiene
+`[`, `]`, `<` ni `>` de marcador. No inventes un dato que falte: si no salió de la preparación, no
+entregues ese prompt, di qué dato falta y cómo obtenerlo.
 
-1. El usuario ejecuta `bash .agents/scripts/preparar-proyecto.sh`, revisa y hace commit; la IA no lo ejecuta en esta guía:
+1. El usuario ejecuta `cd "<PROYECTO>" && bash .agents/scripts/preparar-proyecto.sh`, revisa y hace commit; la IA no lo ejecuta en esta guía:
    `chore: preparar el proyecto para .agents`. Los workflows requieren Git con árbol limpio: si falta
-   repositorio o primer commit, lo prepara el usuario, nunca tú. Explica lo pendiente según `git status --short`.
+   repositorio o primer commit, lo prepara el usuario, nunca tú. Explica lo pendiente según `cd "<PROYECTO>" && git status --short`.
 2. Si las versiones elegidas difieren del código detectado, ejecutar `.agents/workflows/change-version.md`
    (back, front y SQL según corresponda) antes de los workflows generales; o que el usuario ajuste `stack.yaml`.
    `change-version` carga su propia documentación: su entrada no bloquea por documentación faltante del catálogo.
@@ -600,7 +675,7 @@ en la preparación, sin inventar detecciones ni dejar marcadores en el cierre:
    `preparar-documentacion` las obtiene de su diagnóstico.
 5. Resto según el caso:
    - Back sin servicios: leer `.agents/skills/service-creator/references/servicio-initializr.md` y dar los
-     valores reales obtenidos con `node .agents/scripts/stack.mjs get <clave>`, incluidas las coordenadas
+     valores reales obtenidos con `cd "<PROYECTO>" && node .agents/scripts/stack.mjs get <clave>`, incluidas las coordenadas
      de dependencias ya filtradas. El usuario trae el servicio desde Initializr y lo pega en la raíz;
      después usa `.agents/workflows/incorporate-service.md`. Los siguientes puede pedirlos a la IA o traerlos del mismo modo.
    - Proyectos con código (back con servicios, front existente o SQL con objetos): presenta solo los dos prompts de su stack que figuran abajo; son opcionales y el usuario decide si los usa.
@@ -675,7 +750,7 @@ La explicación de claves queda en `.agents/config/claves.md`; revisa `.agents/r
 «por completar» solo si su creación aparece en la salida. Para cambiar una clave después, sigue su ficha:
 solo opciones y nomenclatura exigen regeneración por configuración; otras pueden requerir un workflow.
 Por ejemplo, `documentacion.timeout_chat` se lee al usarlo; `backend.lombok` exige regenerar; Slack necesita un plan para `Jenkinsfile`.
-El usuario regenera con `python3 -I -B .agents/actualizar.py --kit <KIT>` y relanza el workflow.
+El usuario regenera con `cd "<PROYECTO>" && python3 -I -B .agents/actualizar.py --kit <KIT>` y relanza el workflow.
 La tarea pregunta sí/no/para revisión por diferencias: sí propone corregir en su plan; no conserva
 la diferencia recordada en una línea; para revisión la recuerda ofreciendo aplicarla. Se guarda por valor
 y servicio en `docs/decisiones-stack.md`, según el glosario; la comprobación previa solo informa.
